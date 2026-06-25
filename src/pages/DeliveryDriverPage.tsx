@@ -1,0 +1,625 @@
+DeliveryDriverPage.tsx: DeliveryDriverPage.tsx: "use client";
+
+import React, { useState, useEffect, useMemo } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Loader2,
+  Truck,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  LogOut,
+  MapPin,
+  Navigation,
+} from "lucide-react";
+import { toast } from "sonner";
+import { useDeliveries, Delivery } from "@/context/DeliveryContext";
+import { useOrders } from "@/context/OrderContext";
+import { getBusinessDateString, cn, createLocalDate } from "@/lib/utils";
+import OrderTrackingMap from "@/components/sales/OrderTrackingMap";
+import { supabase } from "@/integrations/supabase/client";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+
+const TRACKING_BASE_URL = "https://agoravai14.onrender.com";
+
+const DeliveryDriverPage = () => {
+  const {
+    deliveries,
+    isLoadingDeliveries,
+    fetchDeliveries,
+    fetchDeliveriesByDriver,
+    updateDelivery,
+  } = useDeliveries();
+  const { orders, isLoadingOrders, updateOrder } = useOrders();
+
+  // persisted simplest session (keeps compatibility with previous localStorage usage)
+  const [driverName, setDriverName] = useState<string>(
+    localStorage.getItem("deliveryDriverName") || ""
+  );
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(
+    !!localStorage.getItem("deliveryDriverName")
+  );
+  const [restaurantId, setRestaurantId] = useState<string>(
+    localStorage.getItem("deliveryDriverRestaurantId") || ""
+  );
+
+  // store auth UID for the driver (preferred identifier)
+  const [driverUid, setDriverUid] = useState<string | null>(
+    localStorage.getItem("deliveryDriverUid") || null
+  );
+
+  // new login fields (email + password)
+  const [emailInput, setEmailInput] = useState<string>("");
+  const [passwordInput, setPasswordInput] = useState<string>("");
+
+  const [showMapForDelivery, setShowMapForDelivery] = useState<string | null>(null);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [problemDescription, setProblemDescription] = useState<string>("");
+  const [activeProblemDeliveryId, setActiveProblemDeliveryId] = useState<string | null>(
+    null
+  );
+  const [pendingStatusUpdate, setPendingStatusUpdate] = useState<
+    Delivery["status"] | null
+  >(null);
+
+  const isLoading = isLoadingDeliveries || isLoadingOrders;
+
+  // Fetch deliveries when session changes:
+  // Depende apenas de isLoggedIn e driverUid — sem restaurantId nas dependências
+  useEffect(() => {
+    const initFetch = async () => {
+      if (!isLoggedIn || !driverName) return;
+
+      let uid = driverUid;
+      if (!uid) {
+        try {
+          const { data } = await supabase.auth.getSession();
+          uid = data.session?.user?.id ?? null;
+          if (uid) {
+            setDriverUid(uid);
+            localStorage.setItem("deliveryDriverUid", uid);
+          }
+        } catch (err) {
+          console.error("Erro ao recuperar sessão supabase:", err);
+        }
+      }
+
+      if (uid) {
+        // Sempre por UID — nunca por restaurantId
+        await fetchDeliveriesByDriver(uid);
+      } else {
+        console.warn("Motorista logado sem UID - entregas vazias");
+      }
+    };
+
+    initFetch();
+  }, [isLoggedIn, driverName, driverUid, fetchDeliveriesByDriver]);
+
+  // On mount: check supabase session and try to initialize driver session automatically
+  useEffect(() => {
+    let subscription: any;
+    const init = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        const session = data.session;
+        if (session?.user) {
+          const user = session.user;
+
+          // Usa a edge function para validar — garante role=Entregador e restaurant_id do banco
+          const { data: fnData, error: fnError } = await supabase.functions.invoke(
+            "verify-driver-login",
+            {
+              headers: { Authorization: `Bearer ${session.access_token}` },
+            }
+          );
+
+          if (fnError || !fnData?.success) {
+            console.warn("Sessão existente mas não é entregador ativo:", fnError || fnData?.error);
+            await supabase.auth.signOut();
+            setIsLoggedIn(false);
+            setDriverName("");
+            setRestaurantId("");
+            setDriverUid(null);
+            localStorage.removeItem("deliveryDriverName");
+            localStorage.removeItem("deliveryDriverRestaurantId");
+            localStorage.removeItem("deliveryDriverUid");
+            return;
+          }
+
+          const { driverName: name, driverId, restaurantId: restId } = fnData;
+
+          setDriverName(name);
+          setRestaurantId(restId);
+          setIsLoggedIn(true);
+          setDriverUid(driverId); // driverId === auth.uid() — garantido pela edge function
+          localStorage.setItem("deliveryDriverName", name);
+          localStorage.setItem("deliveryDriverRestaurantId", restId);
+          localStorage.setItem("deliveryDriverUid", driverId);
+
+          // Sempre por UID — nunca por restaurantId
+          await fetchDeliveriesByDriver(driverId);
+        }
+      } catch (err) {
+        console.error("Erro ao checar sessão:", err);
+      }
+
+      // Reage a login/logout de outras abas
+      const { data: sub } = supabase.auth.onAuthStateChange((_event, _session) => {
+        if (!_session?.user) {
+          setIsLoggedIn(false);
+          setDriverName("");
+          setRestaurantId("");
+          setDriverUid(null);
+          localStorage.removeItem("deliveryDriverName");
+          localStorage.removeItem("deliveryDriverRestaurantId");
+          localStorage.removeItem("deliveryDriverUid");
+        }
+      });
+      subscription = sub?.subscription;
+    };
+
+    init();
+
+    return () => {
+      if (subscription?.unsubscribe) {
+        subscription.unsubscribe();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchDeliveriesByDriver]);
+
+  const handleLogin = async () => {
+    const email = emailInput.trim();
+    const password = passwordInput;
+
+    if (!email) {
+      toast.error("Por favor, digite seu e-mail.");
+      return;
+    }
+    if (!password) {
+      toast.error("Por favor, digite sua senha.");
+      return;
+    }
+
+    setIsLoggingIn(true);
+    try {
+      // 1. Autentica no Supabase Auth
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInError || !signInData.session) {
+        console.error("Erro no signIn:", signInError);
+        toast.error("Erro ao autenticar. Verifique e-mail/senha.");
+        return;
+      }
+
+      // 2. Valida via edge function — garante role=Entregador, status=Ativo
+      //    e retorna restaurant_id do banco (não da URL)
+      const { data: fnData, error: fnError } = await supabase.functions.invoke(
+        "verify-driver-login",
+        {
+          headers: {
+            Authorization: `Bearer ${signInData.session.access_token}`,
+          },
+        }
+      );
+
+      if (fnError || !fnData?.success) {
+        const msg = fnData?.error || "Usuário não é um entregador ativo neste sistema.";
+        console.error("verify-driver-login error:", fnError || fnData);
+        toast.error(msg);
+        await supabase.auth.signOut();
+        return;
+      }
+
+      const { driverName: name, driverId, restaurantId: restId } = fnData;
+
+      // 3. Inicializa sessão do entregador com dados vindos do banco
+      setDriverName(name);
+      setRestaurantId(restId);
+      setDriverUid(driverId); // driverId === auth.uid() — garantido pela edge function
+      setIsLoggedIn(true);
+      localStorage.setItem("deliveryDriverName", name);
+      localStorage.setItem("deliveryDriverRestaurantId", restId);
+      localStorage.setItem("deliveryDriverUid", driverId);
+      toast.success(`Bem-vindo, ${name}!`);
+
+      // 4. Busca entregas sempre por UID — funciona em qualquer URL
+      await fetchDeliveriesByDriver(driverId);
+
+      setEmailInput("");
+      setPasswordInput("");
+    } catch (error) {
+      console.error("Erro inesperado no login:", error);
+      toast.error("Ocorreu um erro inesperado. Tente novamente.");
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.warn("Erro ao deslogar do supabase:", err);
+    }
+    setDriverName("");
+    setRestaurantId("");
+    setDriverUid(null);
+    setIsLoggedIn(false);
+    setEmailInput("");
+    setPasswordInput("");
+    localStorage.removeItem("deliveryDriverName");
+    localStorage.removeItem("deliveryDriverRestaurantId");
+    localStorage.removeItem("deliveryDriverUid");
+    toast.info("Você foi desconectado.");
+  };
+
+  const currentBusinessDate = getBusinessDateString();
+
+  const assignedDeliveries = useMemo(() => {
+    if (!isLoggedIn || !driverName || !deliveries) return [];
+
+    const businessDateString = currentBusinessDate;
+    const normalizedDriver = String(driverName || "").trim().toLowerCase();
+    const statusesToExclude = new Set(["Entregue", "Cancelado"]);
+
+    return (deliveries || [])
+      .filter((delivery) => {
+        if (!delivery) return false;
+
+        // 1) Filtrar por driver_profile_id (UID) — principal identificador
+        if (driverUid) {
+          if (delivery.driver_profile_id) {
+            if (String(delivery.driver_profile_id) !== String(driverUid)) return false;
+          } else {
+            // fallback por nome (compatibilidade legada com entregas sem driver_profile_id)
+            const deliveryman = String(delivery.deliveryman ?? "").trim().toLowerCase();
+            if (!deliveryman || deliveryman !== normalizedDriver) return false;
+          }
+        } else {
+          // sem UID: fallback por nome
+          const deliveryman = String(delivery.deliveryman ?? "").trim().toLowerCase();
+          if (!deliveryman || deliveryman !== normalizedDriver) return false;
+        }
+
+        // 3) Excluir status finalizados
+        const status = String(delivery.status ?? "").trim();
+        if (statusesToExclude.has(status)) return false;
+
+        // 4) Verificar se problema foi resolvido
+        if (delivery.problem_resolved === true) return false;
+
+        // 5) Verificar data (mesma lógica que já existia)
+        const createdAtRaw = delivery.created_at ?? delivery.updated_at ?? null;
+        if (createdAtRaw) {
+          const createdDate = createLocalDate(createdAtRaw.split("T")[0]);
+          const createdDateStringUTC = createdDate?.toISOString().split("T")[0];
+          if (createdDateStringUTC !== businessDateString) return false;
+        } else {
+          return false;
+        }
+
+        return true;
+      })
+      .sort((a, b) => {
+        const businessDate = currentBusinessDate;
+        const timeA = a.estimateddeliverytime;
+        const timeB = b.estimateddeliverytime;
+
+        const dateTimeA = timeA
+          ? new Date(createLocalDate(businessDate)).setHours(
+              parseInt(timeA.split(":")[0]),
+              parseInt(timeA.split(":")[1])
+            )
+          : Number.POSITIVE_INFINITY;
+        const dateTimeB = timeB
+          ? new Date(createLocalDate(businessDate)).setHours(
+              parseInt(timeB.split(":")[0]),
+              parseInt(timeB.split(":")[1])
+            )
+          : Number.POSITIVE_INFINITY;
+
+        return dateTimeA - dateTimeB;
+      });
+  // restaurantId removido das dependências — isolamento garantido pela RLS e pela edge function
+  }, [isLoggedIn, driverName, deliveries, currentBusinessDate, driverUid]);
+
+  const handleUpdateStatus = async (delivery: Delivery, newStatus: Delivery["status"]) => {
+    // Notar: não bloquear quando restaurantId ausente — usamos delivery.restaurant_id como fallback.
+    let descriptionToSend: string | undefined = undefined;
+    let problemResolvedStatus: boolean = false;
+
+    if (newStatus === "Entregue") {
+      problemResolvedStatus = true;
+    } else if (newStatus === "Problema" || newStatus === "Recusado" || newStatus === "Devolvido") {
+      descriptionToSend = problemDescription.trim();
+      if (!descriptionToSend) {
+        toast.error("Por favor, descreva o motivo do problema/recusa/devolução.");
+        return;
+      }
+      problemResolvedStatus = false;
+    }
+
+    const updatedDelivery: Delivery = {
+      ...delivery,
+      status: newStatus,
+      actualdeliverytime:
+        newStatus === "Entregue"
+          ? new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+          : undefined,
+      problem_description: descriptionToSend,
+      problem_resolved: problemResolvedStatus,
+      updated_at: new Date().toISOString(),
+    };
+
+    try {
+      await updateDelivery(updatedDelivery);
+      toast.success(`Entrega ${delivery.orderid} atualizada para "${newStatus}"!`);
+
+      const orderToUpdate = orders.find((o) => o.id === delivery.orderid);
+      if (orderToUpdate && orderToUpdate.status !== newStatus) {
+        await updateOrder({ ...orderToUpdate, status: newStatus });
+      }
+      setProblemDescription("");
+      setActiveProblemDeliveryId(null);
+      setPendingStatusUpdate(null);
+    } catch (error) {
+      console.error("Erro ao atualizar status da entrega:", error);
+      toast.error("Falha ao atualizar status da entrega.");
+    }
+  };
+
+  const getStatusBadgeVariant = (status: Delivery["status"]) => {
+    switch (status) {
+      case "Atribuído":
+        return "default";
+      case "Em Entrega":
+        return "secondary";
+      case "Entregue":
+        return "success";
+      case "Problema":
+        return "destructive";
+      case "Recusado":
+        return "destructive";
+      case "Devolvido":
+        return "destructive";
+      default:
+        return "outline";
+    }
+  };
+
+  const handleProblemButtonClick = (
+    deliveryId: string,
+    statusToSet: Delivery["status"],
+    currentDescription?: string
+  ) => {
+    if (activeProblemDeliveryId === deliveryId && pendingStatusUpdate === statusToSet) {
+      setActiveProblemDeliveryId(null);
+      setProblemDescription("");
+      setPendingStatusUpdate(null);
+    } else {
+      setActiveProblemDeliveryId(deliveryId);
+      setProblemDescription(currentDescription || "");
+      setPendingStatusUpdate(statusToSet);
+    }
+  };
+
+  const handleOpenMaps = (address: string) => {
+    if (!address) {
+      toast.error("Endereço do cliente não informado.");
+      return;
+    }
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`;
+    window.open(url, "_blank");
+  };
+
+  const handleOpenRealtimeTracking = (orderId: string) => {
+    if (!orderId) {
+      toast.error("ID do pedido não disponível.");
+      return;
+    }
+    window.open(`${TRACKING_BASE_URL}/motorista.html?orderId=${orderId}`, "_blank");
+  };
+
+  if (isLoading && isLoggedIn) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="ml-2">Carregando dados...</p>
+      </div>
+    );
+  }
+
+  if (!isLoggedIn) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-gray-900 p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <Truck className="h-12 w-12 mx-auto text-primary mb-4" />
+            <CardTitle className="text-2xl font-bold">Login do Entregador</CardTitle>
+            <CardDescription>Faça login com seu e-mail e senha para acessar suas entregas.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="email">E-mail</Label>
+              <Input
+                id="email"
+                placeholder="seu@exemplo.com"
+                value={emailInput}
+                onChange={(e) => setEmailInput(e.target.value)}
+                onKeyPress={(e) => e.key === "Enter" && handleLogin()}
+                disabled={isLoggingIn}
+              />
+            </div>
+            <div>
+              <Label htmlFor="password">Senha</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Sua senha"
+                value={passwordInput}
+                onChange={(e) => setPasswordInput(e.target.value)}
+                onKeyPress={(e) => e.key === "Enter" && handleLogin()}
+                disabled={isLoggingIn}
+              />
+            </div>
+            <Button onClick={handleLogin} className="w-full" disabled={isLoggingIn}>
+              {isLoggingIn ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Entrando...
+                </>
+              ) : (
+                "Entrar"
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container py-8 space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold flex items-center gap-2">
+          <Truck className="h-7 w-7" /> Minhas Entregas ({driverName})
+        </h1>
+        <Button variant="outline" onClick={handleLogout}>
+          <LogOut className="h-4 w-4 mr-2" /> Sair
+        </Button>
+      </div>
+
+      <CardDescription>
+        Entregas atribuídas a você para o dia de negócio atual ({currentBusinessDate}).
+      </CardDescription>
+
+      {assignedDeliveries.length === 0 ? (
+        <div className="text-center py-12 border rounded-lg bg-muted/50">
+          <h3 className="text-xl font-semibold mb-2">Nenhuma entrega atribuída para hoje.</h3>
+          <p className="text-muted-foreground">Aproveite seu dia ou aguarde novas atribuições!</p>
+        </div>
+      ) : (
+        <div className="grid gap-4">
+          {assignedDeliveries.map((delivery) => (
+            <Card key={delivery.id} className="shadow-md">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-lg">Pedido: {delivery.orderid}</CardTitle>
+                <Badge variant={getStatusBadgeVariant(delivery.status)}>{delivery.status}</Badge>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Cliente: <span className="font-medium text-foreground">{delivery.clientname}</span>
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Endereço: <span className="font-medium text-foreground">{delivery.client_address}</span>
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Estimativa: <span className="font-medium text-foreground">{delivery.estimateddeliverytime}</span>
+                </p>
+
+                <div className="flex flex-wrap gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => handleOpenMaps(delivery.client_address)}
+                    className="flex-1 min-w-[140px]"
+                  >
+                    <Navigation className="h-4 w-4 mr-2" />
+                    Abrir rota no Google Maps
+                  </Button>
+                  <Button
+                    variant="default"
+                    onClick={() => handleOpenRealtimeTracking(delivery.orderid)}
+                    className="flex-1 min-w-[140px]"
+                  >
+                    <Truck className="h-4 w-4 mr-2" />
+                    Rastrear (tempo real)
+                  </Button>
+                </div>
+
+                {delivery.trackinglink && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <MapPin className="h-4 w-4 text-primary" />
+                    <Button variant="link" className="p-0 h-auto" onClick={() => setShowMapForDelivery(showMapForDelivery === delivery.id ? null : delivery.id)}>
+                      {showMapForDelivery === delivery.id ? "Esconder mapa" : "Ver no mapa"}
+                    </Button>
+                  </div>
+                )}
+
+                {showMapForDelivery === delivery.id && delivery.trackinglink && (
+                  <div className="mt-4">
+                    <OrderTrackingMap trackinglink={delivery.trackinglink} />
+                  </div>
+                )}
+
+                {(activeProblemDeliveryId === delivery.id && (pendingStatusUpdate === "Problema" || pendingStatusUpdate === "Recusado" || pendingStatusUpdate === "Devolvido")) && (
+                  <div className="space-y-2 mt-4">
+                    <Label htmlFor={`problem-description-${delivery.id}`}>Motivo do {pendingStatusUpdate === "Recusado" ? "Recusa" : pendingStatusUpdate === "Devolvido" ? "Devolução" : "Problema"}</Label>
+                    <Textarea
+                      id={`problem-description-${delivery.id}`}
+                      value={problemDescription}
+                      onChange={(e) => setProblemDescription(e.target.value)}
+                      placeholder="Descreva o motivo..."
+                      rows={3}
+                    />
+                    <Button
+                      onClick={() => pendingStatusUpdate && handleUpdateStatus(delivery, pendingStatusUpdate)}
+                      className={cn(
+                        "w-full",
+                        pendingStatusUpdate === "Recusado" || pendingStatusUpdate === "Devolvido" ? "bg-red-500 hover:bg-red-600 text-white" : "bg-orange-500 hover:bg-orange-600 text-white"
+                      )}
+                    >
+                      Confirmar {pendingStatusUpdate === "Recusado" ? "Recusa" : pendingStatusUpdate === "Devolvido" ? "Devolução" : "Problema"}
+                    </Button>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-2 pt-4 border-t mt-4">
+                  <Button
+                    onClick={() => handleUpdateStatus(delivery, "Entregue")}
+                    className="bg-green-500 hover:bg-green-600 text-white flex-1 min-w-[120px]"
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" /> Entregue
+                  </Button>
+                  <Button
+                    onClick={() => handleProblemButtonClick(delivery.id, "Devolvido", delivery.problem_description)}
+                    className={cn(
+                      "flex-1 min-w-[120px]",
+                      activeProblemDeliveryId === delivery.id && pendingStatusUpdate === "Devolvido" ? "bg-red-700" : "bg-red-500 hover:bg-red-600 text-white"
+                    )}
+                  >
+                    <XCircle className="h-4 w-4 mr-2" /> Devolvido
+                  </Button>
+                  <Button
+                    onClick={() => handleProblemButtonClick(delivery.id, "Problema", delivery.problem_description)}
+                    variant="outline"
+                    className={cn(
+                      "flex-1 min-w-[120px]",
+                      activeProblemDeliveryId === delivery.id && pendingStatusUpdate === "Problema" ? "bg-orange-500 hover:bg-orange-600 text-white" : ""
+                    )}
+                  >
+                    <AlertCircle className="h-4 w-4 mr-2" /> Não Entregue
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default DeliveryDriverPage;

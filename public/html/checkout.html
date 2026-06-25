@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Pizza Place Checkout</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              primary: "#0F4C75",
+              action: "#FF7A00",
+              background: "#FFFFFF",
+              "alt-background": "#F6F7FA",
+              text: "#333333",
+            },
+            fontFamily: {
+              display: ["Inter", "sans-serif"],
+            },
+            borderRadius: {
+              DEFAULT: "0.5rem",
+              lg: "0.75rem",
+              xl: "1rem",
+              full: "9999px",
+            },
+          },
+        },
+      };
+    </script>
+<style>
+      body {
+        font-family: "Inter", sans-serif;
+      }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display">
+<div class="min-h-screen">
+<div class="mx-auto grid max-w-7xl grid-cols-1 lg:grid-cols-2">
+<div class="bg-alt-background dark:bg-background-dark/50 lg:order-last px-4 py-8 sm:px-6 lg:py-12">
+<div class="mx-auto max-w-lg space-y-8">
+<h2 class="text-2xl font-bold text-text dark:text-alt-background">Order Summary</h2>
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-4">
+<img alt="Classic Pizza" class="h-16 w-16 rounded object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB895sJvm7pirsKKNCqi-tTVd81pkCoATraumadWi_N2t1OHC-dTW_8tS_uJS7bSqt7BaclMP18DyodUtvinI7FUumhWPE5ziKbxMRJXvI1fhKtQBqR02OCe8PXY6kleUXBtUNG8Huf371yrptLhn-Y2qoW0B4t3RTWgkFeTCQr_bDOdhbDGuvMV-WBdT0txcXdnl01RyhNMUd4dfMmor67VpHYOgixI-7R23jDIhn4q8SMMzkc3UeC7lX7y3Ze78tC2Y6She_CiaPJ"/>
+<div>
+<h3 class="font-medium text-text dark:text-alt-background">Classic Pizza</h3>
+<p class="text-sm text-text/70 dark:text-alt-background/70">Large, Pepperoni</p>
+</div>
+</div>
+<p class="font-medium text-text dark:text-alt-background">$15.99</p>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-4">
+<img alt="Garden Fresh Pizza" class="h-16 w-16 rounded object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2HjqX9rHmrOg56SkGo9fKMvdANRzHqmWKjoVA3p7GlDOGCuDBsSeD2RK-Jwsa8oQqES_MaPCpT_8woh1GoffjmQfvelvVnNuURwH7Ys0vNUvd4cgX0hz-ABabmqdG8seU2RXNupkJ4OuH_Wxij6GXuItVmuwg73SzzNUdOvhZ29QZgHDcFpJVhX4wRie_3xLUhxvM3vXZbQCPbpSCnaKe4OinXR7ShFjB5WXBSxb5xrrpbMYFiGIGXbSgBixEqcFXP7bVwI78ZtFM"/>
+<div>
+<h3 class="font-medium text-text dark:text-alt-background">Garden Fresh Pizza</h3>
+<p class="text-sm text-text/70 dark:text-alt-background/70">Medium, Veggie</p>
+</div>
+</div>
+<p class="font-medium text-text dark:text-alt-background">$12.99</p>
+</div>
+</div>
+<div class="space-y-2 border-t border-text/10 dark:border-alt-background/10 pt-4">
+<div class="flex justify-between">
+<p class="text-text/70 dark:text-alt-background/70">Subtotal</p>
+<p class="font-medium text-text dark:text-alt-background">$28.98</p>
+</div>
+<div class="flex justify-between">
+<p class="text-text/70 dark:text-alt-background/70">Delivery</p>
+<p class="font-medium text-text dark:text-alt-background">$2.99</p>
+</div>
+<div class="flex justify-between">
+<p class="text-text/70 dark:text-alt-background/70">Tax</p>
+<p class="font-medium text-text dark:text-alt-background">$2.50</p>
+</div>
+<div class="flex justify-between border-t border-text/10 dark:border-alt-background/10 pt-2 mt-2">
+<p class="text-lg font-bold text-text dark:text-alt-background">Total</p>
+<p class="text-lg font-bold text-text dark:text-alt-background">$34.47</p>
+</div>
+</div>
+<div class="flex items-center justify-center gap-4 rounded bg-primary/10 dark:bg-primary/20 p-4">
+<span class="material-symbols-outlined text-primary text-3xl"> local_shipping </span>
+<p class="text-sm font-medium text-primary">Free shipping on orders over $50</p>
+</div>
+</div>
+</div>
+<div class="px-4 py-8 sm:px-6 lg:py-12">
+<div class="mx-auto max-w-lg">
+<div class="flex items-center gap-2 text-primary">
+<span class="material-symbols-outlined"> local_pizza </span>
+<h1 class="text-2xl font-bold">PizzaDash</h1>
+</div>
+<p class="mt-4 text-3xl font-bold tracking-tight text-text dark:text-alt-background sm:text-4xl">Checkout</p>
+<p class="mt-2 text-text/70 dark:text-alt-background/70">Enter your details to complete your order.</p>
+<form class="mt-8 grid grid-cols-1 gap-6">
+<div>
+<h3 class="text-lg font-medium text-text dark:text-alt-background">Shipping Information</h3>
+<div class="mt-4 space-y-4">
+<input class="w-full rounded border-text/20 dark:border-alt-background/20 bg-background dark:bg-alt-background/10 p-3 text-sm text-text dark:text-alt-background placeholder-text/50 dark:placeholder-alt-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50" placeholder="Full Name" type="text"/>
+<input class="w-full rounded border-text/20 dark:border-alt-background/20 bg-background dark:bg-alt-background/10 p-3 text-sm text-text dark:text-alt-background placeholder-text/50 dark:placeholder-alt-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50" placeholder="Address" type="text"/>
+<div class="grid grid-cols-2 gap-4">
+<input class="w-full rounded border-text/20 dark:border-alt-background/20 bg-background dark:bg-alt-background/10 p-3 text-sm text-text dark:text-alt-background placeholder-text/50 dark:placeholder-alt-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50" placeholder="City" type="text"/>
+<input class="w-full rounded border-text/20 dark:border-alt-background/20 bg-background dark:bg-alt-background/10 p-3 text-sm text-text dark:text-alt-background placeholder-text/50 dark:placeholder-alt-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50" placeholder="Zip Code" type="text"/>
+</div>
+<input class="w-full rounded border-text/20 dark:border-alt-background/20 bg-background dark:bg-alt-background/10 p-3 text-sm text-text dark:text-alt-background placeholder-text/50 dark:placeholder-alt-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50" placeholder="Phone Number" type="tel"/>
+</div>
+</div>
+<div>
+<h3 class="text-lg font-medium text-text dark:text-alt-background">Payment Information</h3>
+<div class="mt-4 space-y-4">
+<div class="relative">
+<input class="w-full rounded border-text/20 dark:border-alt-background/20 bg-background dark:bg-alt-background/10 p-3 pl-12 text-sm text-text dark:text-alt-background placeholder-text/50 dark:placeholder-alt-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50" placeholder="Card Number" type="text"/>
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text/50 dark:text-alt-background/50"> credit_card </span>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<input class="w-full rounded border-text/20 dark:border-alt-background/20 bg-background dark:bg-alt-background/10 p-3 text-sm text-text dark:text-alt-background placeholder-text/50 dark:placeholder-alt-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50" placeholder="MM/YY" type="text"/>
+<input class="w-full rounded border-text/20 dark:border-alt-background/20 bg-background dark:bg-alt-background/10 p-3 text-sm text-text dark:text-alt-background placeholder-text/50 dark:placeholder-alt-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50" placeholder="CVV" type="text"/>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-4 rounded-lg bg-primary/10 dark:bg-primary/20 p-4">
+<span class="material-symbols-outlined text-primary text-3xl"> verified_user </span>
+<p class="text-sm font-medium text-primary">Your payment is secure. We use the latest encryption technology to protect your information.</p>
+</div>
+<button class="w-full rounded bg-action py-3 text-sm font-bold text-background shadow-lg transition hover:bg-action/90">
+                Place Order
+              </button>
+<p class="text-center text-xs text-text/50 dark:text-alt-background/50">By placing your order, you agree to our <a class="underline hover:text-text dark:hover:text-alt-background" href="#">Terms &amp; Conditions</a>.</p>
+</form>
+</div>
+</div>
+</div>
+</div>
+
+</body></html>

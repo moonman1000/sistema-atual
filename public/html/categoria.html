@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Pizza Place - Our Pizzas</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              primary: '#0F4C75',
+              action: '#FF7A00',
+              'background-light': '#FFFFFF',
+              'alt-background': '#F6F7FA',
+              text: '#333333',
+            },
+            fontFamily: {
+              display: ['Inter', 'sans-serif'],
+            },
+            borderRadius: {
+              DEFAULT: '0.5rem',
+              lg: '0.75rem',
+              full: '9999px',
+            },
+          },
+        },
+      }
+    </script>
+<style>
+      body {
+        font-family: 'Inter', sans-serif;
+      }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-alt-background font-display">
+<div class="flex flex-col min-h-screen">
+<header class="bg-background-light dark:bg-alt-background/95 sticky top-0 z-10 backdrop-blur-sm shadow-sm">
+<div class="container mx-auto px-4 sm:px-6 lg:px-8">
+<div class="flex items-center justify-between h-20">
+<div class="flex items-center gap-6">
+<a class="flex items-center gap-2 text-primary" href="#">
+<svg class="h-8 w-8" fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M44 11.2727C44 14.0109 39.8386 16.3957 33.69 17.6364C39.8386 18.877 44 21.2618 44 24C44 26.7382 39.8386 29.123 33.69 30.3636C39.8386 31.6043 44 33.9891 44 36.7273C44 40.7439 35.0457 44 24 44C12.9543 44 4 40.7439 4 36.7273C4 33.9891 8.16144 31.6043 14.31 30.3636C8.16144 29.123 4 26.7382 4 24C4 21.2618 8.16144 18.877 14.31 17.6364C8.16144 16.3957 4 14.0109 4 11.2727C4 7.25611 12.9543 4 24 4C35.0457 4 44 7.25611 44 11.2727Z" fill="currentColor"></path>
+</svg>
+<span class="text-2xl font-black tracking-tighter text-text dark:text-background-light">Pizza Slice</span>
+</a>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-sm font-medium text-text/80 dark:text-background-light/80 hover:text-primary transition-colors" href="#">Menu</a>
+<a class="text-sm font-medium text-text/80 dark:text-background-light/80 hover:text-primary transition-colors" href="#">Deals</a>
+<a class="text-sm font-medium text-text/80 dark:text-background-light/80 hover:text-primary transition-colors" href="#">Stores</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="hidden md:flex items-center justify-center h-10 px-6 rounded-full bg-primary/10 text-primary font-bold text-sm hover:bg-primary/20 transition-colors">
+                Log In
+              </button>
+<button class="flex items-center justify-center h-10 w-10 rounded-full bg-action text-white">
+<span class="material-symbols-outlined"> shopping_bag </span>
+</button>
+</div>
+</div>
+</div>
+</header>
+<main class="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+<div class="flex flex-col lg:flex-row gap-8">
+<aside class="w-full lg:w-64 space-y-6 p-4 rounded-lg border bg-background-light dark:bg-text/5 shadow-sm">
+<h2 class="text-2xl font-bold text-primary dark:text-background-light">Filtros</h2>
+<div>
+<h3 class="font-semibold mb-2 text-text dark:text-background-light">Categoria</h3>
+<div class="relative">
+<select class="w-full rounded-md border border-text/20 dark:border-background-light/20 bg-background-light dark:bg-text/10 text-text dark:text-background-light focus:ring-primary focus:border-primary pr-8">
+<option>Todos</option>
+<option>Pizzas Clássicas</option>
+<option>Criações Gourmet</option>
+<option>Opções Vegetarianas</option>
+<option>Bebidas</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-text/60 dark:text-background-light/60 pointer-events-none">
+                  expand_more
+                </span>
+</div>
+</div>
+<div>
+<h3 class="font-semibold mb-2 text-text dark:text-background-light">Ordenar por</h3>
+<div class="relative">
+<select class="w-full rounded-md border border-text/20 dark:border-background-light/20 bg-background-light dark:bg-text/10 text-text dark:text-background-light focus:ring-primary focus:border-primary pr-8">
+<option>Popularidade</option>
+<option>Preço: Menor para Maior</option>
+<option>Preço: Maior para Menor</option>
+<option>Nome: A-Z</option>
+<option>Nome: Z-A</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-text/60 dark:text-background-light/60 pointer-events-none">
+                  expand_more
+                </span>
+</div>
+</div>
+<div>
+<h3 class="font-semibold mb-2 text-text dark:text-background-light">Dietas</h3>
+<div class="space-y-2">
+<label class="flex items-center">
+<input class="rounded text-primary focus:ring-primary/50 dark:bg-text/20 dark:border-background-light/20" type="checkbox"/>
+<span class="ml-2 text-sm text-text dark:text-background-light">Vegetariana</span>
+</label>
+<label class="flex items-center">
+<input class="rounded text-primary focus:ring-primary/50 dark:bg-text/20 dark:border-background-light/20" type="checkbox"/>
+<span class="ml-2 text-sm text-text dark:text-background-light">Vegana</span>
+</label>
+<label class="flex items-center">
+<input class="rounded text-primary focus:ring-primary/50 dark:bg-text/20 dark:border-background-light/20" type="checkbox"/>
+<span class="ml-2 text-sm text-text dark:text-background-light">Sem Glúten</span>
+</label>
+</div>
+</div>
+<div>
+<h3 class="font-semibold mb-2 text-text dark:text-background-light">Faixa de Preço</h3>
+<input class="w-full h-2 bg-alt-background rounded-lg appearance-none cursor-pointer accent-primary" max="200" min="0" type="range" value="100"/>
+<div class="flex justify-between text-xs text-text/60 dark:text-background-light/60 mt-1">
+<span>$0</span>
+<span>$200</span>
+</div>
+</div>
+</aside>
+<div class="flex-1">
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
+<h1 class="text-4xl font-black text-primary dark:text-background-light tracking-tight">Margherita Pizzas</h1>
+<p class="text-text/60 dark:text-background-light/60 mt-2 sm:mt-0">Mostrando 6 de 24 pizzas</p>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+<div class="flex flex-col overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300">
+<a class="block relative overflow-hidden group" href="#">
+<img alt="Classic Pepperoni Pizza" class="w-full h-48 object-cover rounded-t-lg transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCoRH7oxLfPx55Hm1we50HKK8V07G6VgOFOt46Q3_LJgYMYWTZHRGQ5vmwnBu2_Ct2hIhLjPG3Gau0VPrsmEFJwFziOP60zfy8xFU0B06zkKNK-VJ8kqmQC4htZSSpcoZ7_F_i1SNq-O5Gvanq4_sslNRXwDT-z7l3JXSU514toKl260G0kZEWVlWcODo2LFtcx6SRKmZKQ-g-OWhFwW67ocdXUbpwkTKpmdqiWCBaxtYf7BQ-gaH9UqMU11Wy1P6QzO5eQnAbmQq1U"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+<span class="text-white text-lg font-semibold">Ver Detalhes</span>
+</div>
+</a>
+<div class="p-4 flex-1 flex flex-col justify-between bg-background-light dark:bg-text/5">
+<div>
+<h3 class="text-xl font-semibold mb-2 text-text dark:text-background-light">Classic Pepperoni</h3>
+<p class="text-sm text-text/70 dark:text-background-light/70 mb-4 line-clamp-2">The timeless favorite with a generous layer of zesty pepperoni over mozzarella.</p>
+</div>
+<div class="flex items-center justify-between">
+<p class="text-lg font-bold text-primary">$12.99</p>
+<button class="bg-action text-white px-4 py-2 rounded font-bold text-sm hover:bg-action/90 transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-base"> add_shopping_cart </span>
+                      Add
+                    </button>
+</div>
+</div>
+</div>
+<div class="flex flex-col overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300">
+<a class="block relative overflow-hidden group" href="#">
+<img alt="Margherita Delight Pizza" class="w-full h-48 object-cover rounded-t-lg transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDtZLjM_V0Wgd0YI5_v1YXlfb-I6beIRY7tqrQtig3o8Uxj0vd9_suSNODwiESmMEc71fZkSpmORDJPLpOhZH_6fydfxazQFIuOLomoEfgiYuPkBaEEuskWixdCBEzEB_SnLzUc0pnqMotpvc_52cEmFAOaSKECnzceat6fyV5sqvBEFA-jkCxOJNW7QG19UUTkbqMotpvc_52cEmFAOaSKECnzceat6fyV5sqvBEFA-jkCxOJNW7QG19UUTkbqNU1R5SA-wmX_7gFM6QRQDnNIJiWoVeykDPTZuhECrk2sL5ww0DEBuL4AyLnI_uA2g46gGIe1za"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+<span class="text-white text-lg font-semibold">Ver Detalhes</span>
+</div>
+</a>
+<div class="p-4 flex-1 flex flex-col justify-between bg-background-light dark:bg-text/5">
+<div>
+<h3 class="text-xl font-semibold mb-2 text-text dark:text-background-light">Margherita Delight</h3>
+<p class="text-sm text-text/70 dark:text-background-light/70 mb-4 line-clamp-2">Simple yet elegant, with fresh mozzarella, San Marzano tomatoes, and basil.</p>
+</div>
+<div class="flex items-center justify-between">
+<p class="text-lg font-bold text-primary">$10.99</p>
+<button class="bg-action text-white px-4 py-2 rounded font-bold text-sm hover:bg-action/90 transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-base"> add_shopping_cart </span>
+                      Add
+                    </button>
+</div>
+</div>
+</div>
+<div class="flex flex-col overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300">
+<a class="block relative overflow-hidden group" href="#">
+<img alt="Veggie Supreme Pizza" class="w-full h-48 object-cover rounded-t-lg transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD8z_NTTzFpAsNp2TNJpJMFe-z1B6LAEEnr7IyhQ5nUwca26mYJ5HRnVmthHV1wcPCGkk8PKx6jjHLPrOVAw59fzroQUOfKPenaYymxZLg7y8GvkcFjbZVL1Laz5LNiQpcI3f9aZUFuXFe5acGf1CHV5tq_8fZSUhvvAtG-vYIVgjZsQla42UKNe2-Z7ww9UOTs4aVcOknwVfqUjqNpliotTDuPZs6kjeootCq5U99Ii-lp04KZJ0QtNzWcC_vl3MGLzwInaeP82bTE"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+<span class="text-white text-lg font-semibold">Ver Detalhes</span>
+</div>
+</a>
+<div class="p-4 flex-1 flex flex-col justify-between bg-background-light dark:bg-text/5">
+<div>
+<h3 class="text-xl font-semibold mb-2 text-text dark:text-background-light">Veggie Supreme</h3>
+<p class="text-sm text-text/70 dark:text-background-light/70 mb-4 line-clamp-2">A colorful mix of bell peppers, onions, olives, and mushrooms.</p>
+</div>
+<div class="flex items-center justify-between">
+<p class="text-lg font-bold text-primary">$13.99</p>
+<button class="bg-action text-white px-4 py-2 rounded font-bold text-sm hover:bg-action/90 transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-base"> add_shopping_cart </span>
+                      Add
+                    </button>
+</div>
+</div>
+</div>
+<div class="flex flex-col overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300">
+<a class="block relative overflow-hidden group" href="#">
+<img alt="Hawaiian Luau Pizza" class="w-full h-48 object-cover rounded-t-lg transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuACZvUorDtjXS6CJtIKD1JdtoR6dv5YQmJoCCBA8Ee24wIaCTHYWg35R0vTwepvlpJb0iny4nMCSYPqzdYia1ERkxxz-jMy-2pDAg4iyTiud3Mw7HDuBeKu_19X_D-cED2MpTb2HIwh3IMV7HE7gCLza-HWih3DAEsC7PP45ToGVKACVXXsO9g_WFuVq8qUebhE0cg5jcuT1Mtdkr_uS4ijCxDjIoiXrbbso5uVZ0y07sdsTRhYbfwFZg5PfLK4ICqRACTWZsz9eveP"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+<span class="text-white text-lg font-semibold">Ver Detalhes</span>
+</div>
+</a>
+<div class="p-4 flex-1 flex flex-col justify-between bg-background-light dark:bg-text/5">
+<div>
+<h3 class="text-xl font-semibold mb-2 text-text dark:text-background-light">Hawaiian Luau</h3>
+<p class="text-sm text-text/70 dark:text-background-light/70 mb-4 line-clamp-2">A tropical twist with juicy pineapple chunks and savory ham.</p>
+</div>
+<div class="flex items-center justify-between">
+<p class="text-lg font-bold text-primary">$13.99</p>
+<button class="bg-action text-white px-4 py-2 rounded font-bold text-sm hover:bg-action/90 transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-base"> add_shopping_cart </span>
+                      Add
+                    </button>
+</div>
+</div>
+</div>
+<div class="flex flex-col overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300">
+<a class="block relative overflow-hidden group" href="#">
+<img alt="Meat Lovers' Feast Pizza" class="w-full h-48 object-cover rounded-t-lg transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuApXzembgw6wl7KRTxLcLzhUfjuG_w9DdKK3vslfC_kKCdNnZdBHl3geIwZx_HPHehfYKuHeiAe0Yunvy0_qdPSqo-P9xOMR1xLYV3Qxyb5ZI7tCZyHRsCRDUl1bQmLHmYX6ua6ZlXfxt6HF_uF03eGqz0Pgfw8OqZW15WAr5BXJ2MCbGUyP3taMHzNq2Oh6G8QY0_BvnDTfg5Y7tOn6cR-GYdENRCpKu7WUutJSJImqGcs691Y5gHTeOP5svzGy96c4h9Ue1akvCi3gFe"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+<span class="text-white text-lg font-semibold">Ver Detalhes</span>
+</div>
+</a>
+<div class="p-4 flex-1 flex flex-col justify-between bg-background-light dark:bg-text/5">
+<div>
+<h3 class="text-xl font-semibold mb-2 text-text dark:text-background-light">Meat Lovers'</h3>
+<p class="text-sm text-text/70 dark:text-background-light/70 mb-4 line-clamp-2">For the carnivore: pepperoni, sausage, ham, and bacon.</p>
+</div>
+<div class="flex items-center justify-between">
+<p class="text-lg font-bold text-primary">$15.99</p>
+<button class="bg-action text-white px-4 py-2 rounded font-bold text-sm hover:bg-action/90 transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-base"> add_shopping_cart </span>
+                      Add
+                    </button>
+</div>
+</div>
+</div>
+<div class="flex flex-col overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300">
+<a class="block relative overflow-hidden group" href="#">
+<img alt="BBQ Chicken Ranch Pizza" class="w-full h-48 object-cover rounded-t-lg transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZVLiPuFffFTJw-AH8dWzZghVW8BmQ_oYtf-zSr6iWWjQhkB6LkQojWyrIpNBUxC7YTH-1UayznlvOnd0M2yV2TUH4STmBe5bbOBn_BOf7b98DzS08mOEI9fM3Kf6bRfAPGkcZSbML2u78gB7WQzWR_7CdRL-AGfM-qeB-HRxgxYlvACYCGPrtXsm0td0ulk_j_RKeN-mHHtN6I8LpFxp4DkZpL7z_98biZJu_DTJNwNXkBLcA0wOP9svzGy96c4h9Ue1akvCi3gFe"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+<span class="text-white text-lg font-semibold">Ver Detalhes</span>
+</div>
+</a>
+<div class="p-4 flex-1 flex flex-col justify-between bg-background-light dark:bg-text/5">
+<div>
+<h3 class="text-xl font-semibold mb-2 text-text dark:text-background-light">BBQ Chicken</h3>
+<p class="text-sm text-text/70 dark:text-background-light/70 mb-4 line-clamp-2">Tangy BBQ sauce, grilled chicken, red onions, and a ranch drizzle.</p>
+</div>
+<div class="flex items-center justify-between">
+<p class="text-lg font-bold text-primary">$14.99</p>
+<button class="bg-action text-white px-4 py-2 rounded font-bold text-sm hover:bg-action/90 transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-base"> add_shopping_cart </span>
+                      Add
+                    </button>
+</div>
+</div>
+</div>
+</div>
+<div class="flex justify-center items-center mt-12 space-x-2">
+<a class="flex items-center justify-center h-10 w-10 rounded-full hover:bg-alt-background dark:hover:bg-text/10 text-text/60 dark:text-background-light/60 transition-colors" href="#">
+<span class="material-symbols-outlined"> chevron_left </span>
+</a>
+<a class="flex items-center justify-center h-10 w-10 rounded-full bg-primary text-white font-bold text-sm" href="#">1</a>
+<a class="flex items-center justify-center h-10 w-10 rounded-full hover:bg-alt-background dark:hover:bg-text/10 text-text dark:text-background-light font-medium text-sm transition-colors" href="#">2</a>
+<a class="flex items-center justify-center h-10 w-10 rounded-full hover:bg-alt-background dark:hover:bg-text/10 text-text dark:text-background-light font-medium text-sm transition-colors" href="#">3</a>
+<span class="flex items-center justify-center h-10 w-10 text-text/60 dark:text-background-light/60">...</span>
+<a class="flex items-center justify-center h-10 w-10 rounded-full hover:bg-alt-background dark:hover:bg-text/10 text-text dark:text-background-light font-medium text-sm transition-colors" href="#">10</a>
+<a class="flex items-center justify-center h-10 w-10 rounded-full hover:bg-alt-background dark:hover:bg-text/10 text-text/60 dark:text-background-light/60 transition-colors" href="#">
+<span class="material-symbols-outlined"> chevron_right </span>
+</a>
+</div>
+</div>
+</div>
+</main>
+</div>
+
+</body></html>

@@ -1,0 +1,423 @@
+import React from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+import { Order } from "@/context/OrderContext";
+import { useMenu } from "@/context/MenuContext";
+import { formatCurrency } from "@/lib/utils";
+import { Loader2, PlusCircle, MinusCircle } from "lucide-react";
+
+interface FormOrderItem {
+  tempId: string;
+  menuItemId: string;
+  name: string;
+  quantity: number;
+  basePrice: number;
+  selectedSizeValue?: string;
+  selectedSizeName?: string;
+  selectedSizePriceModifier?: number;
+  selectedToppings: { name: string; price: number; value: string }[];
+}
+
+interface AddOrderDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onAddOrder: (
+    newOrder: Omit<Order, 'id' | 'profile_id' | 'created_at' | 'updated_at'>,
+    orderItems: FormOrderItem[]
+  ) => void;
+  availableClients: string[];
+  // aceita strings (antigo) ou objetos { id, name } (recomendado)
+  availableDeliverymen: Array<string | { id: string; name: string }>;
+}
+
+type OrderStatus = "Confirmado" | "Em Preparo" | "Em Entrega" | "Entregue" | "Cancelado" | "Problema" | "Pendente" | "Recusado" | "Devolvido";
+
+const AddOrderDialog: React.FC<AddOrderDialogProps> = ({ isOpen, onClose, onAddOrder, availableClients, availableDeliverymen }) => {
+  const { menuItems, isLoadingMenuItems } = useMenu();
+  const [clientName, setClientName] = React.useState("");
+  const [client_address, setClientAddress] = React.useState("");
+  // deliveryman (nome legível) mantém compatibilidade de exibição
+  const [deliveryman, setDeliveryman] = React.useState<string>("Não Atribuído");
+  // selectedDeliverymanId guarda o UID (driver_profile_id) quando disponível
+  const [selectedDeliverymanId, setSelectedDeliverymanId] = React.useState<string>("");
+  const [total, setTotal] = React.useState("");
+  const [status, setStatus] = React.useState<OrderStatus>("Pendente");
+  const [order_date, setOrderDate] = React.useState(new Date().toISOString().split('T')[0]);
+  const [tracking_link, setTrackingLink] = React.useState("");
+  const [formOrderItems, setFormOrderItems] = React.useState<FormOrderItem[]>([]);
+  const [isAdding, setIsAdding] = React.useState(false);
+
+  const calculateItemsTotal = React.useMemo(() => {
+    return formOrderItems.reduce((sum, item) => {
+      let itemPrice = item.basePrice;
+      if (item.selectedSizePriceModifier) {
+        itemPrice += item.selectedSizePriceModifier;
+      }
+      item.selectedToppings.forEach(topping => {
+        itemPrice += topping.price;
+      });
+      return sum + (itemPrice * item.quantity);
+    }, 0);
+  }, [formOrderItems]);
+
+  React.useEffect(() => {
+    setTotal(calculateItemsTotal.toFixed(2));
+  }, [calculateItemsTotal]);
+
+  const handleAddItem = () => {
+    setFormOrderItems(prev => [
+      ...prev,
+      {
+        tempId: Math.random().toString(36).substring(2, 11),
+        menuItemId: "",
+        name: "",
+        quantity: 1,
+        basePrice: 0,
+        selectedToppings: [],
+      },
+    ]);
+  };
+
+  const handleRemoveItem = (tempId: string) => {
+    setFormOrderItems(prev => prev.filter(item => item.tempId !== tempId));
+  };
+
+  const handleItemChange = (tempId: string, field: keyof FormOrderItem, value: any) => {
+    setFormOrderItems(prev =>
+      prev.map(item => {
+        if (item.tempId === tempId) {
+          if (field === "menuItemId") {
+            const selectedMenuItem = menuItems.find(mi => mi.id === value);
+            if (selectedMenuItem) {
+              const defaultSize = selectedMenuItem.sizes.length > 0 ? selectedMenuItem.sizes[0] : undefined;
+              return {
+                ...item,
+                menuItemId: selectedMenuItem.id,
+                name: selectedMenuItem.name,
+                basePrice: selectedMenuItem.base_price,
+                selectedSizeValue: defaultSize?.value,
+                selectedSizeName: defaultSize?.name,
+                selectedSizePriceModifier: defaultSize?.price_modifier,
+                selectedToppings: [],
+              };
+            }
+          } else if (field === "selectedSizeValue") {
+            const selectedMenuItem = menuItems.find(mi => mi.id === item.menuItemId);
+            const selectedSizeObj = selectedMenuItem?.sizes.find(s => s.value === value);
+            return {
+              ...item,
+              selectedSizeValue: selectedSizeObj?.value,
+              selectedSizeName: selectedSizeObj?.name,
+              selectedSizePriceModifier: selectedSizeObj?.price_modifier,
+            };
+          } else if (field === "selectedToppings") {
+            const selectedMenuItem = menuItems.find(mi => mi.id === item.menuItemId);
+            const topping = selectedMenuItem?.toppings.find(t => t.value === value);
+            if (topping) {
+              const isSelected = item.selectedToppings.some(t => t.value === topping.value);
+              const updatedToppings = isSelected
+                ? item.selectedToppings.filter(t => t.value !== value)
+                : [...item.selectedToppings, { name: topping.name, price: topping.price, value: topping.value }];
+              return { ...item, selectedToppings: updatedToppings };
+            }
+          }
+          return { ...item, [field]: value };
+        }
+        return item;
+      })
+    );
+  };
+
+  const handleDeliverymanChange = (value: string) => {
+    // sentinel para sem atribuição
+    if (value === '__UNASSIGNED__') {
+      setSelectedDeliverymanId('');
+      setDeliveryman('Não Atribuído');
+      return;
+    }
+
+    // procurar por objeto com id igual a value
+    const foundObj = (availableDeliverymen as any[]).find(d => {
+      if (typeof d === 'string') return d === value;
+      return d.id === value || d.name === value;
+    });
+
+    if (foundObj) {
+      if (typeof foundObj === 'string') {
+        setSelectedDeliverymanId('');
+        setDeliveryman(foundObj);
+      } else {
+        setSelectedDeliverymanId(foundObj.id);
+        setDeliveryman(foundObj.name);
+      }
+    } else {
+      // fallback: treat value as a name
+      setSelectedDeliverymanId('');
+      setDeliveryman(value);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!clientName || !client_address || !total || !status || !order_date || formOrderItems.length === 0) {
+      toast.error("Por favor, preencha todos os campos obrigatórios e adicione pelo menos um item.");
+      return;
+    }
+    if (isNaN(parseFloat(total)) || parseFloat(total) <= 0) {
+      toast.error("O total do pedido deve ser um número positivo.");
+      return;
+    }
+
+    setIsAdding(true);
+    try {
+      const orderItemsDescription = formOrderItems.map(item => {
+        let desc = `${item.quantity}x ${item.name}`;
+        if (item.selectedSizeName) {
+          desc += ` (${item.selectedSizeName})`;
+        }
+        if (item.selectedToppings.length > 0) {
+          const toppingsNames = item.selectedToppings.map(t => t.name).join(', ');
+          if (toppingsNames) desc += ` c/ ${toppingsNames}`;
+        }
+        return desc;
+      }).join('; ');
+
+      await onAddOrder(
+        {
+          client_name: clientName,
+          client_address,
+          items: orderItemsDescription,
+          total: parseFloat(total),
+          status,
+          order_date,
+          deliveryman: deliveryman,
+          // envia o UID (driver_profile_id) quando disponível, caso contrário null
+          driver_profile_id: selectedDeliverymanId || null,
+          tracking_link: tracking_link || undefined,
+        } as any,
+        formOrderItems
+      );
+      onClose();
+      setClientName("");
+      setClientAddress("");
+      setDeliveryman("Não Atribuído");
+      setSelectedDeliverymanId("");
+      setTotal("");
+      setStatus("Pendente");
+      setOrderDate(new Date().toISOString().split('T')[0]);
+      setTrackingLink("");
+      setFormOrderItems([]);
+    } catch (error) {
+      console.error("Erro ao adicionar pedido:", error);
+      toast.error("Erro ao adicionar pedido.");
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Adicionar Novo Pedido</DialogTitle>
+          <DialogDescription>
+            Preencha os detalhes para adicionar um novo pedido.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="clientName" className="text-right">
+              Cliente
+            </Label>
+            <Select value={clientName} onValueChange={setClientName}>
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Selecione o cliente" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableClients.map((client) => (
+                  <SelectItem key={client} value={client}>{client}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="client_address" className="text-right">
+              Endereço
+            </Label>
+            <Input id="client_address" value={client_address} onChange={(e) => setClientAddress(e.target.value)} className="col-span-3" />
+          </div>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="deliveryman" className="text-right">
+              Entregador
+            </Label>
+            <Select value={selectedDeliverymanId || (deliveryman === 'Não Atribuído' ? '__UNASSIGNED__' : deliveryman)} onValueChange={handleDeliverymanChange}>
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Selecione o entregador" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__UNASSIGNED__">Não Atribuído</SelectItem>
+                {availableDeliverymen.map((dm) => {
+                  if (typeof dm === 'string') {
+                    return <SelectItem key={dm} value={dm}>{dm}</SelectItem>;
+                  } else {
+                    return <SelectItem key={dm.id} value={dm.id}>{dm.name}</SelectItem>;
+                  }
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* ... restante do formulário (itens, total, status, data, tracking) ... */}
+          <div className="col-span-4 space-y-4 border-t pt-4">
+            <div className="flex justify-between items-center">
+              <Label className="text-base font-semibold">Itens do Pedido</Label>
+              <Button type="button" variant="outline" size="sm" onClick={handleAddItem}>
+                <PlusCircle className="h-4 w-4 mr-2" /> Adicionar Item
+              </Button>
+            </div>
+            {formOrderItems.length === 0 && <p className="text-muted-foreground text-sm text-center">Nenhum item adicionado.</p>}
+            {formOrderItems.map((item, index) => (
+              <div key={item.tempId} className="grid grid-cols-1 gap-2 p-3 border rounded-md bg-muted/50">
+                <div className="flex justify-between items-center">
+                  <Label className="text-sm font-medium">Item #{index + 1}</Label>
+                  <Button type="button" variant="destructive" size="icon" className="h-6 w-6" onClick={() => handleRemoveItem(item.tempId)}>
+                    <MinusCircle className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-2">
+                  <Label htmlFor={`menuItem-${item.tempId}`} className="text-right text-sm">Produto</Label>
+                  <Select
+                    value={item.menuItemId}
+                    onValueChange={(value) => handleItemChange(item.tempId, "menuItemId", value)}
+                    disabled={isLoadingMenuItems}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="Selecione um produto" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {isLoadingMenuItems ? (
+                        <SelectItem value="loading" disabled>
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" /> Carregando...
+                        </SelectItem>
+                      ) : (
+                        menuItems.map(menuItem => (
+                          <SelectItem key={menuItem.id} value={menuItem.id}>
+                            {menuItem.name} ({formatCurrency(menuItem.base_price)})
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {item.menuItemId && menuItems.find(mi => mi.id === item.menuItemId)?.sizes.length > 0 && (
+                  <div className="grid grid-cols-4 items-center gap-2">
+                    <Label htmlFor={`size-${item.tempId}`} className="text-right text-sm">Tamanho</Label>
+                    <Select
+                      value={item.selectedSizeValue}
+                      onValueChange={(value) => handleItemChange(item.tempId, "selectedSizeValue", value)}
+                    >
+                      <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="Selecione o tamanho" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {menuItems.find(mi => mi.id === item.menuItemId)?.sizes.map(size => (
+                          <SelectItem key={size.value} value={size.value}>
+                            {size.name} (+{formatCurrency(size.price_modifier)})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                {item.menuItemId && menuItems.find(mi => mi.id === item.menuItemId)?.toppings.length > 0 && (
+                  <div className="grid grid-cols-4 items-start gap-2">
+                    <Label className="text-right text-sm mt-2">Coberturas</Label>
+                    <div className="col-span-3 flex flex-wrap gap-2">
+                      {menuItems.find(mi => mi.id === item.menuItemId)?.toppings.map(topping => (
+                        <div key={topping.value} className="flex items-center space-x-1">
+                          <input
+                            type="checkbox"
+                            id={`topping-${item.tempId}-${topping.value}`}
+                            checked={item.selectedToppings.some(t => t.value === topping.value)}
+                            onChange={() => handleItemChange(item.tempId, "selectedToppings", topping.value)}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary-foreground"
+                          />
+                          <Label htmlFor={`topping-${item.tempId}-${topping.value}`} className="text-xs">
+                            {topping.name} (+{formatCurrency(topping.price)})
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div className="grid grid-cols-4 items-center gap-2">
+                  <Label htmlFor={`quantity-${item.tempId}`} className="text-right text-sm">Quantidade</Label>
+                  <Input
+                    id={`quantity-${item.tempId}`}
+                    type="number"
+                    min="1"
+                    value={item.quantity}
+                    onChange={(e) => handleItemChange(item.tempId, "quantity", parseInt(e.target.value) || 1)}
+                    className="col-span-3"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="total" className="text-right">
+              Total (R$)
+            </Label>
+            <Input id="total" type="number" value={total} readOnly className="col-span-3 bg-muted" />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="status" className="text-right">
+              Status
+            </Label>
+            <Select value={status} onValueChange={(value: OrderStatus) => setStatus(value)}>
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Selecione o status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Pendente">Pendente</SelectItem>
+                <SelectItem value="Confirmado">Confirmado</SelectItem>
+                <SelectItem value="Em Preparo">Em Preparo</SelectItem>
+                <SelectItem value="Em Entrega">Em Entrega</SelectItem>
+                <SelectItem value="Entregue">Entregue</SelectItem>
+                <SelectItem value="Cancelado">Cancelado</SelectItem>
+                <SelectItem value="Problema">Problema</SelectItem>
+                <SelectItem value="Recusado">Recusado</SelectItem>
+                <SelectItem value="Devolvido">Devolvido</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="order_date" className="text-right">
+              Data
+            </Label>
+            <Input id="order_date" type="date" value={order_date} onChange={(e) => setOrderDate(e.target.value)} className="col-span-3" />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="tracking_link" className="text-right">
+              Link Rastreamento
+            </Label>
+            <Input id="tracking_link" value={tracking_link} onChange={(e) => setTrackingLink(e.target.value)} className="col-span-3" placeholder="Opcional" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={isAdding}>Cancelar</Button>
+          <Button type="submit" onClick={handleSubmit} disabled={isAdding || formOrderItems.length === 0}>
+            {isAdding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Salvar Pedido"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default AddOrderDialog;

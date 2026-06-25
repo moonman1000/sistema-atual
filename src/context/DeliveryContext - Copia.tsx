@@ -1,0 +1,292 @@
+import React, { createContext, useState, useContext, useEffect, useMemo, ReactNode, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { OrderContext as ImportedOrderContext } from './OrderContext';
+import { useSession } from './SessionContext.tsx 08.02.2026';
+import { useRestaurant } from './RestaurantContext';
+import { useDeliveryMutations } from '@/hooks/useDeliveryMutations';
+import { soundManager } from '@/lib/soundManager';
+
+export interface Delivery {
+  id: string;
+  orderid: string;
+  clientname: string;
+  client_address: string;
+  deliveryman: string;
+  status: "Atribuído" | "Em Entrega" | "Entregue" | "Problema" | "Recusado" | "Devolvido";
+  estimateddeliverytime: string;
+  actualdeliverytime?: string;
+  trackinglink?: string;
+  restaurant_id: string;
+  created_at?: string;
+  updated_at?: string;
+  problem_description?: string;
+  problem_resolved?: boolean; // NOVO: Adicionado status de resolução de problema
+}
+
+interface DeliveryContextType {
+  deliveries: Delivery[];
+  addDelivery: (newDelivery: Omit<Delivery, 'id' | 'restaurant_id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  updateDelivery: (updatedDelivery: Delivery) => Promise<void>;
+  deleteDelivery: (deliveryId: string) => Promise<void>;
+  isLoadingDeliveries: boolean;
+  fetchDeliveries: () => Promise<void>;
+  newDeliveryIds: string[];
+  markDeliveryAsViewed: (deliveryId: string) => void;
+  markDeliveryAsResolved: (deliveryId: string) => Promise<void>; // NOVO: Função para marcar como resolvido
+}
+
+const DeliveryContext = createContext<DeliveryContextType | undefined>(undefined);
+
+export const DeliveryProvider = ({ children }: { children: ReactNode }) => {
+  const { session, profile, isLoading: isLoadingSession, isAdmin, isCustomer, isSuperAdmin } = useSession();
+  const { currentRestaurant, isLoadingRestaurants } = useRestaurant();
+  const orderContext = useContext(ImportedOrderContext);
+  const { orders, isLoadingOrders, updateOrder: updateOrderInOrderContext } = orderContext || { orders: [], isLoadingOrders: true, updateOrder: async () => {} };
+
+  const [deliveries, setDeliveries] = useState<Delivery[]>([]);
+  const [isLoadingDeliveries, setIsLoadingDeliveries] = useState(true);
+  const [newDeliveryIds, setNewDeliveryIds] = useState<string[]>([]);
+
+  const markDeliveryAsViewed = useCallback((deliveryId: string) => {
+    setNewDeliveryIds(prev => prev.filter(id => id !== deliveryId));
+  }, []);
+
+  const { addDelivery: addDeliveryMutation, updateDelivery: updateDeliveryMutation, deleteDelivery: deleteDeliveryMutation } = useDeliveryMutations(setNewDeliveryIds, updateOrderInOrderContext, orders);
+
+  const fetchDeliveries = useCallback(async (currentRestaurantId: string) => {
+    setIsLoadingDeliveries(true);
+    const { data, error } = await supabase
+      .from('deliveries')
+      .select('*')
+      .eq('restaurant_id', currentRestaurantId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error("Erro ao carregar entregas:", error);
+      toast.error("Erro ao carregar entregas.");
+      setDeliveries([]);
+    } else {
+      setDeliveries(data as Delivery[]);
+    }
+    setIsLoadingDeliveries(false);
+  }, []);
+
+  const handleFetchDeliveriesWrapper = useCallback(async () => {
+    const targetRestaurantId = isAdmin || isSuperAdmin ? currentRestaurant?.id : profile?.restaurant_id;
+    if (targetRestaurantId) {
+        await fetchDeliveries(targetRestaurantId);
+    }
+  }, [isAdmin, isSuperAdmin, currentRestaurant?.id, profile?.restaurant_id, fetchDeliveries]);
+
+
+  const handleAddDelivery = useCallback(async (newDeliveryData: Omit<Delivery, 'id' | 'restaurant_id' | 'created_at' | 'updated_at'>) => {
+    setIsLoadingDeliveries(true);
+    try {
+      const addedDelivery = await addDeliveryMutation(newDeliveryData);
+      setDeliveries(prevDeliveries => [addedDelivery, ...prevDeliveries.filter(d => d.id !== addedDelivery.id)]);
+      toast.success("Entrega adicionada com sucesso!");
+      setNewDeliveryIds(prev => [...prev, addedDelivery.id]); // Marcar como novo ao adicionar
+    } catch (error) {
+      // Erro tratado no hook
+    } finally {
+      setIsLoadingDeliveries(false);
+    }
+  }, [addDeliveryMutation]);
+
+  const handleUpdateDelivery = useCallback(async (updatedDelivery: Delivery) => {
+    setIsLoadingDeliveries(true);
+    try {
+      const updatedDeliveryData = await updateDeliveryMutation(updatedDelivery);
+      
+      setDeliveries(prevDeliveries =>
+        prevDeliveries.map(delivery => (delivery.id === updatedDeliveryData.id ? updatedDeliveryData : delivery))
+      );
+      
+      toast.success("Entrega atualizada com sucesso!");
+    } catch (error) {
+      // Erro tratado no hook
+    } finally {
+      setIsLoadingDeliveries(false);
+    }
+  }, [updateDeliveryMutation]);
+
+  const handleDeleteDelivery = useCallback(async (deliveryId: string) => {
+    setIsLoadingDeliveries(true);
+    try {
+      const deletedId = await deleteDeliveryMutation(deliveryId);
+      
+      setDeliveries(prevDeliveries => prevDeliveries.filter(delivery => delivery.id !== deletedId));
+      setNewDeliveryIds(prev => prev.filter(id => id !== deletedId));
+      toast.success(`Entrega ${deletedId} foi excluída.`);
+    } catch (error) {
+      // Erro tratado no hook
+    } finally {
+      setIsLoadingDeliveries(false);
+    }
+  }, [deleteDeliveryMutation]);
+
+  // NOVO: Função para marcar uma entrega como problema resolvido
+  const markDeliveryAsResolved = useCallback(async (deliveryId: string) => {
+    const deliveryToUpdate = deliveries.find(d => d.id === deliveryId);
+    if (!deliveryToUpdate) {
+      toast.error("Entrega não encontrada para marcar como resolvida.");
+      return;
+    }
+
+    try {
+      await updateDeliveryMutation({ ...deliveryToUpdate, problem_resolved: true });
+      setDeliveries(prev => prev.map(d => d.id === deliveryId ? { ...d, problem_resolved: true } : d));
+      toast.success("Problema de entrega marcado como resolvido.");
+    } catch (error) {
+      console.error("Erro ao marcar problema como resolvido:", error);
+      toast.error("Falha ao marcar problema como resolvido.");
+    }
+  }, [deliveries, updateDeliveryMutation]);
+
+
+  useEffect(() => {
+    let cancelled = false;
+    let subscription: any = null;
+
+    const runFetchAndSubscribe = async () => {
+      const targetRestaurantId = isAdmin || isSuperAdmin ? currentRestaurant?.id : profile?.restaurant_id;
+
+      if (!session || (!isAdmin && !isSuperAdmin && !isCustomer) || (!targetRestaurantId && !isSuperAdmin)) {
+        if (!cancelled) {
+          setDeliveries([]);
+          setIsLoadingDeliveries(false);
+        }
+        if (subscription) {
+            supabase.removeChannel(subscription);
+            subscription = null;
+        }
+        return;
+      }
+      
+      if (isLoadingSession || isLoadingRestaurants) {
+          if (!cancelled) {
+              setIsLoadingDeliveries(true);
+          }
+          return;
+      }
+
+      if (session && targetRestaurantId) {
+        await fetchDeliveries(targetRestaurantId);
+
+        if (subscription) {
+            supabase.removeChannel(subscription);
+            subscription = null;
+        }
+
+        subscription = supabase
+          .channel(`deliveries_channel_${targetRestaurantId}`)
+          .on(
+            'postgres_changes',
+            {
+              event: '*', // OUVIR TODOS OS EVENTOS (INSERT, UPDATE, DELETE)
+              schema: 'public',
+              table: 'deliveries',
+              filter: `restaurant_id=eq.${targetRestaurantId}`,
+            },
+            async (payload) => { // Adicionado 'async' aqui
+              console.log("[DeliveryContext] Realtime Event Received:", payload.eventType, "for ID:", payload.new?.id || payload.old?.id);
+              const newDelivery = payload.new as Delivery;
+              const oldDelivery = payload.old as Delivery;
+
+              // Re-fetch completo para garantir consistência e dados aninhados (se houver)
+              // Isso também garante que o daily_order_number do pedido associado seja atualizado
+              await fetchDeliveries(targetRestaurantId); 
+
+              if (payload.eventType === 'INSERT') {
+                console.log("[DeliveryContext] Realtime: Nova entrega inserida. Adicionando ID para pulsação.");
+                setNewDeliveryIds(prev => [...prev, newDelivery.id]);
+                if ((isAdmin || isSuperAdmin) && currentRestaurant?.receive_delivery_notifications) {
+                    soundManager.playSaleSound();
+                }
+              } else if (payload.eventType === 'UPDATE') {
+                console.log("[DeliveryContext] Realtime: Entrega atualizada.");
+                // Apenas notificar e pulsar se o status mudou para 'Entregue' ou 'Recusado' ou 'Problema'
+                if (newDelivery.status === 'Entregue' && oldDelivery.status !== 'Entregue') {
+                  console.log("[DeliveryContext] Realtime: Entrega concluída. Adicionando ID para pulsação.");
+                  setNewDeliveryIds(prev => [...prev, newDelivery.id]);
+                  if ((isAdmin || isSuperAdmin) && currentRestaurant?.receive_delivery_notifications) {
+                      soundManager.playSaleSound();
+                  }
+                } else if ((newDelivery.status === 'Problema' || newDelivery.status === 'Recusado' || newDelivery.status === 'Devolvido') && (oldDelivery.status !== 'Problema' && oldDelivery.status !== 'Recusado' && oldDelivery.status !== 'Devolvido')) {
+                  console.log("[DeliveryContext] Realtime: Problema/Recusa/Devolvido detectado. Adicionando ID para pulsação.");
+                  setNewDeliveryIds(prev => [...prev, newDelivery.id]);
+                  if ((isAdmin || isSuperAdmin) && currentRestaurant?.receive_delivery_notifications) {
+                      soundManager.playSaleSound(); // Pode ser um som diferente para problemas
+                  }
+                }
+              } else if (payload.eventType === 'DELETE') {
+                console.log("[DeliveryContext] Realtime: Entrega excluída. Removendo ID da pulsação.");
+                setNewDeliveryIds(prev => prev.filter(id => id !== oldDelivery.id));
+              }
+            }
+          )
+          .subscribe();
+
+        return () => {
+          if (subscription) {
+            supabase.removeChannel(subscription);
+          }
+        };
+
+      } else {
+        if (!cancelled) {
+          setDeliveries([]);
+          setIsLoadingDeliveries(false);
+        }
+      }
+    };
+
+    runFetchAndSubscribe();
+
+    return () => {
+      cancelled = true;
+      if (subscription) {
+        supabase.removeChannel(subscription);
+      }
+    };
+  }, [
+    isLoadingSession,
+    isLoadingOrders,
+    isLoadingRestaurants,
+    session,
+    profile?.restaurant_id,
+    currentRestaurant?.id,
+    isAdmin,
+    isCustomer,
+    isSuperAdmin,
+    currentRestaurant?.receive_delivery_notifications,
+    fetchDeliveries,
+  ]);
+
+
+  const contextValue = useMemo(
+    () => ({
+      deliveries,
+      addDelivery: handleAddDelivery,
+      updateDelivery: handleUpdateDelivery,
+      deleteDelivery: handleDeleteDelivery,
+      isLoadingDeliveries,
+      fetchDeliveries: handleFetchDeliveriesWrapper,
+      newDeliveryIds,
+      markDeliveryAsViewed,
+      markDeliveryAsResolved, // NOVO: Adicionado ao contexto
+    }),
+    [deliveries, handleAddDelivery, handleUpdateDelivery, handleDeleteDelivery, isLoadingDeliveries, handleFetchDeliveriesWrapper, newDeliveryIds, markDeliveryAsViewed, markDeliveryAsResolved]
+  );
+
+  return <DeliveryContext.Provider value={contextValue}>{children}</DeliveryContext.Provider>;
+};
+
+export const useDeliveries = () => {
+  const context = useContext(DeliveryContext);
+  if (context === undefined) {
+    throw new Error('useDeliveries must be used within a DeliveryProvider');
+  }
+  return context;
+};

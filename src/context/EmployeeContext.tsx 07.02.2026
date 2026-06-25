@@ -1,0 +1,236 @@
+import React, { createContext, useState, useContext, useEffect, useMemo, useCallback, ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useSession } from './SessionContext';
+import { useRestaurant } from './RestaurantContext'; // Importar useRestaurant
+import { toast } from 'sonner';
+
+export interface Employee {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  role: "Gerente" | "Cozinheiro" | "Entregador" | "Atendente";
+  status: "Ativo" | "Inativo" | "Férias";
+  hire_date: string;
+  salary: number;
+  avatar_url?: string;
+  restaurant_id: string; // Adicionado restaurant_id
+  created_at?: string;
+  updated_at?: string;
+}
+
+interface EmployeeContextType {
+  employees: Employee[];
+  isLoadingEmployees: boolean;
+  addEmployee: (newEmployee: Omit<Employee, 'id' | 'restaurant_id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  updateEmployee: (updatedEmployee: Employee) => Promise<void>;
+  deleteEmployee: (employeeId: string) => Promise<void>;
+  fetchEmployees: () => Promise<void>;
+  availableDeliverymenNames: string[];
+}
+
+const EmployeeContext = createContext<EmployeeContextType | undefined>(undefined);
+
+export const EmployeeProvider = ({ children }: { children: ReactNode }) => {
+  const { session, isAdmin, isSuperAdmin, isLoading: isLoadingSession } = useSession(); // Obter isSuperAdmin
+  const { currentRestaurant, isLoadingRestaurants } = useRestaurant(); // Obter currentRestaurant
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [isLoadingEmployees, setIsLoadingEmployees] = useState(true);
+
+  const fetchEmployees = useCallback(async () => {
+    setIsLoadingEmployees(true);
+    console.log("EmployeeContext: Starting fetchEmployees...");
+    if (!session || (!isAdmin && !isSuperAdmin) || !currentRestaurant?.id) { // Permitir admin ou super_admin
+      setEmployees([]);
+      setIsLoadingEmployees(false);
+      console.log("EmployeeContext: No session, not admin/super_admin, or no restaurant selected, clearing employees.");
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('employees')
+        .select('*')
+        .eq('restaurant_id', currentRestaurant.id) // Filtrar por restaurant_id
+        .order('name', { ascending: true });
+
+      if (error) {
+        console.error("EmployeeContext: Erro ao carregar funcionários:", error);
+        toast.error("Erro ao carregar funcionários.");
+        setEmployees([]);
+      } else {
+        console.log("EmployeeContext: Funcionários carregados com sucesso.");
+        setEmployees(data as Employee[]);
+      }
+    } catch (unexpectedError) {
+      console.error("EmployeeContext: Erro inesperado durante fetchEmployees:", unexpectedError);
+      toast.error("Erro inesperado ao carregar funcionários.");
+      setEmployees([]);
+    } finally {
+      setIsLoadingEmployees(false);
+      console.log("EmployeeContext: fetchEmployees finished. Final isLoadingEmployees:", false);
+    }
+  }, [session, isAdmin, isSuperAdmin, currentRestaurant?.id]); // Adicionar isSuperAdmin às dependências
+
+  useEffect(() => {
+    let cancelled = false;
+    const runFetch = async () => {
+      if (isLoadingSession || isLoadingRestaurants) { // Incluir isLoadingRestaurants
+        if (!cancelled) {
+          setEmployees([]);
+          setIsLoadingEmployees(true);
+        }
+        console.log("EmployeeContext: Session or Restaurant is loading, setting employees to loading state.");
+        return;
+      }
+
+      if (session && (isAdmin || isSuperAdmin) && currentRestaurant?.id) { // Permitir admin ou super_admin
+        console.log("EmployeeContext: Session finished loading and user is admin/super_admin with restaurant, initiating fetchEmployees.");
+        await fetchEmployees();
+      } else {
+        if (!cancelled) {
+          setEmployees([]);
+          setIsLoadingEmployees(false);
+        }
+        console.log("EmployeeContext: Session finished loading, no user, not admin/super_admin, or no restaurant, clearing employees.");
+      }
+    };
+
+    runFetch();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoadingSession, isLoadingRestaurants, session, isAdmin, isSuperAdmin, currentRestaurant?.id, fetchEmployees]); // Adicionar isLoadingRestaurants e isSuperAdmin
+
+  const addEmployee = async (newEmployeeData: Omit<Employee, 'id' | 'restaurant_id' | 'created_at' | 'updated_at'>) => {
+    if (!session || (!isAdmin && !isSuperAdmin)) { // Permitir admin ou super_admin
+      toast.error("Apenas administradores ou super administradores podem adicionar funcionários.");
+      throw new Error("Acesso não autorizado.");
+    }
+    if (!currentRestaurant?.id) {
+      toast.error("Nenhum restaurante selecionado para adicionar funcionário.");
+      throw new Error("Restaurant ID not available.");
+    }
+
+    setIsLoadingEmployees(true);
+    const { data, error } = await supabase
+      .from('employees')
+      .insert({
+        ...newEmployeeData,
+        restaurant_id: currentRestaurant.id, // Adicionar restaurant_id
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Erro ao adicionar funcionário:", error);
+      toast.error("Erro ao adicionar funcionário: " + error.message);
+      setIsLoadingEmployees(false);
+      throw error;
+    }
+
+    setEmployees(prev => [...prev, data as Employee]);
+    toast.success("Funcionário adicionado com sucesso!");
+    setIsLoadingEmployees(false);
+  };
+
+  const updateEmployee = async (updatedEmployee: Employee) => {
+    if (!session || (!isAdmin && !isSuperAdmin)) { // Permitir admin ou super_admin
+      toast.error("Apenas administradores ou super administradores podem atualizar funcionários.");
+      throw new Error("Acesso não autorizado.");
+    }
+    if (!currentRestaurant?.id || updatedEmployee.restaurant_id !== currentRestaurant.id) {
+      toast.error("Acesso não autorizado ou restaurante incorreto para atualizar funcionário.");
+      throw new Error("Unauthorized access or invalid restaurant ID.");
+    }
+
+    setIsLoadingEmployees(true);
+    const { error } = await supabase
+      .from('employees')
+      .update({
+        name: updatedEmployee.name,
+        email: updatedEmployee.email,
+        phone: updatedEmployee.phone,
+        role: updatedEmployee.role,
+        status: updatedEmployee.status,
+        hire_date: updatedEmployee.hire_date,
+        salary: updatedEmployee.salary,
+        avatar_url: updatedEmployee.avatar_url,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', updatedEmployee.id)
+      .eq('restaurant_id', currentRestaurant.id); // Filtrar por restaurant_id
+
+    if (error) {
+      console.error("Erro ao atualizar funcionário:", error);
+      toast.error("Erro ao atualizar funcionário: " + error.message);
+      setIsLoadingEmployees(false);
+      throw error;
+    }
+
+    setEmployees(prev =>
+      prev.map(emp => (emp.id === updatedEmployee.id ? updatedEmployee : emp))
+    );
+    toast.success("Funcionário atualizado com sucesso!");
+    setIsLoadingEmployees(false);
+  };
+
+  const deleteEmployee = async (employeeId: string) => {
+    if (!session || (!isAdmin && !isSuperAdmin)) { // Permitir admin ou super_admin
+      toast.error("Apenas administradores ou super administradores podem excluir funcionários.");
+      throw new Error("Acesso não autorizado.");
+    }
+    if (!currentRestaurant?.id) {
+      toast.error("Nenhum restaurante selecionado para excluir funcionário.");
+      throw new Error("Restaurant ID not available.");
+    }
+
+    setIsLoadingEmployees(true);
+    const { error } = await supabase
+      .from('employees')
+      .delete()
+      .eq('id', employeeId)
+      .eq('restaurant_id', currentRestaurant.id); // Filtrar por restaurant_id
+
+    if (error) {
+      console.error("Erro ao excluir funcionário:", error);
+      toast.error("Erro ao excluir funcionário: " + error.message);
+      setIsLoadingEmployees(false);
+      throw error;
+    }
+
+    setEmployees(prev => prev.filter(emp => emp.id !== employeeId));
+    toast.success(`Funcionário ${employeeId} foi excluído.`);
+    setIsLoadingEmployees(false);
+  };
+
+  const availableDeliverymenNames = useMemo(() => {
+    return ["Não Atribuído", ...employees.filter(emp => emp.role === "Entregador" && emp.status === "Ativo").map(emp => emp.name)];
+  }, [employees]);
+
+  const contextValue = useMemo(
+    () => ({
+      employees,
+      isLoadingEmployees,
+      addEmployee,
+      updateEmployee,
+      deleteEmployee,
+      fetchEmployees,
+      availableDeliverymenNames,
+    }),
+    [employees, isLoadingEmployees, addEmployee, updateEmployee, deleteEmployee, fetchEmployees, availableDeliverymenNames, currentRestaurant, isAdmin, isSuperAdmin]
+  );
+
+  return <EmployeeContext.Provider value={contextValue}>{children}</EmployeeContext.Provider>;
+};
+
+export const useEmployees = () => {
+  const context = useContext(EmployeeContext);
+  if (context === undefined) {
+    throw new Error('useEmployees must be used within an EmployeeProvider');
+  }
+  return context;
+};

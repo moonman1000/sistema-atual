@@ -1,0 +1,496 @@
+import React, {
+  createContext,
+  useState,
+  useContext,
+  useEffect,
+  useMemo,
+  useCallback,
+  ReactNode,
+} from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { soundManager } from '@/lib/soundManager';
+import { useOrderMutations } from '@/hooks/useOrderMutations';
+import { useSession } from './SessionContext';
+import { useRestaurant } from './RestaurantContext';
+
+// --- Interfaces (Defined here to be shared with the hook) ---
+export interface Order {
+  id: string;
+  profile_id: string | null;
+  client_name: string;
+  client_address: string;
+
+  // NOVO: coordenadas do cliente (para rastreio em tempo real)
+  client_lat?: number | null;
+  client_lng?: number | null;
+
+  items: string; // Descrição textual dos itens
+  total: number;
+  status:
+    | 'Confirmado'
+    | 'Em Preparo'
+    | 'Em Entrega'
+    | 'Entregue'
+    | 'Cancelado'
+    | 'Problema'
+    | 'Pendente'
+    | 'Recusado'
+    | 'Devolvido';
+  order_date: string;
+  daily_order_number?: number; // Número sequencial diário
+  deliveryman: string;
+  tracking_link?: string;
+  restaurant_id: string;
+  created_at?: string;
+  updated_at?: string;
+
+  // Já é utilizado em TrackOrderPage
+  estimateddeliverytime?: string;
+
+  order_items?: any[]; // Usar 'any' para evitar dependência circular complexa
+}
+
+// Definir uma interface para os itens do pedido no formulário (deve ser a mesma do AddOrderDialog)
+export interface FormOrderItem {
+  tempId: string; // Para gerenciar itens na UI antes de salvar
+  menuItemId: string;
+  name: string;
+  quantity: number;
+  basePrice: number;
+  selectedSizeValue?: string;
+  selectedSizeName?: string;
+  selectedSizePriceModifier?: number;
+  selectedToppings: { name: string; price: number; value: string }[];
+}
+
+// 🔷 Definir a interface do contexto
+interface OrderContextType {
+  orders: Order[];
+  isLoadingOrders: boolean;
+  addOrder: (
+    newOrder: Omit<
+      Order,
+      'id' | 'profile_id' | 'restaurant_id' | 'created_at' | 'updated_at' | 'daily_order_number'
+    >,
+    itemsToAdd: FormOrderItem[],
+    cartRestaurantId: string
+  ) => Promise<any>;
+  updateOrder: (updatedOrder: Order) => Promise<void>;
+  cancelOrder: (orderId: string) => Promise<void>;
+  deleteOrder: (orderId: string) => Promise<void>;
+  fetchOrders: () => Promise<void>;
+  newOrderIds: string[]; // IDs dos pedidos recém-chegados
+  markOrderAsViewed: (orderId: string) => void;
+}
+
+const OrderContext = createContext<OrderContextType | undefined>(undefined);
+
+export { OrderContext };
+
+export const useOrders = () => {
+  const context = useContext(OrderContext);
+  if (context === undefined) {
+    throw new Error('useOrders must be used within an OrderProvider');
+  }
+  return context;
+};
+
+export const OrderProvider = ({ children }: { children: ReactNode }) => {
+  const {
+    session,
+    profile,
+    isLoading: isLoadingSession,
+    isAdmin,
+    isCustomer,
+    isSuperAdmin,
+    softRevalidateSession,
+  } = useSession();
+  const { currentRestaurant, isLoadingRestaurants } = useRestaurant();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(true);
+  const [newOrderIds, setNewOrderIds] = useState<string[]>([]);
+
+  // 🔨 Mutations (Delegated to hook)
+  const {
+    addOrder: addOrderMutation,
+    updateOrder: updateOrderMutation,
+    cancelOrder: cancelOrderMutation,
+    deleteOrder: deleteOrderMutation,
+  } = useOrderMutations();
+
+  // 👁️ Função para marcar um pedido como visualizado
+  const markOrderAsViewed = useCallback((orderId: string) => {
+    setNewOrderIds((prev) => prev.filter((id) => id !== orderId));
+  }, []);
+
+  // 🚚 Fetching logic (used for initial load and manual refresh)
+  const fetchOrders = useCallback(
+    async (
+      currentProfileId: string | null,
+      isAdminUser: boolean,
+      isSuperAdminUser: boolean,
+      targetRestaurantId: string
+    ) => {
+      setIsLoadingOrders(true);
+      console.log(
+        `[OrderContext] fetchOrders: Fetching orders for restaurant ${targetRestaurantId}, profile ${currentProfileId}, isAdmin ${isAdminUser}, isSuperAdmin ${isSuperAdminUser}`
+      );
+      let query = supabase
+        .from('orders')
+        .select(
+          `
+      *,
+      order_items(*)
+    `
+        );
+
+      if (isSuperAdminUser || isAdminUser) {
+        query = query.eq('restaurant_id', targetRestaurantId);
+      } else if (currentProfileId) {
+        query = query.eq('profile_id', currentProfileId).eq('restaurant_id', targetRestaurantId);
+      } else {
+        setOrders([]);
+        setIsLoadingOrders(false);
+        console.log(
+          '[OrderContext] fetchOrders: No valid user context for fetching orders, clearing state.'
+        );
+        return [];
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('[OrderContext] fetchOrders: Erro ao carregar pedidos:', error);
+        toast.error('Erro ao carregar pedidos.', {
+          description: error.message,
+          duration: 4000,
+        });
+        setOrders([]);
+      } else {
+        console.log(
+          `[OrderContext] fetchOrders: Pedidos carregados com sucesso (${data?.length} itens).`
+        );
+        setOrders((data as Order[]) || []);
+      }
+      setIsLoadingOrders(false);
+      return (data as Order[]) || [];
+    },
+    [isAdmin, isSuperAdmin]
+  );
+
+  // Wrapper para fetchOrders sem argumentos (para uso externo)
+  const handleFetchOrdersWrapper = useCallback(async () => {
+    const targetRestaurantId =
+      isAdmin || isSuperAdmin ? currentRestaurant?.id : profile?.restaurant_id;
+    if (targetRestaurantId) {
+      await fetchOrders(profile?.id || null, isAdmin, isSuperAdmin, targetRestaurantId);
+    }
+  }, [
+    fetchOrders,
+    isAdmin,
+    isSuperAdmin,
+    currentRestaurant?.id,
+    profile?.restaurant_id,
+    profile?.id,
+  ]);
+
+  // --- Funções de Mutação que agora só chamam o hook e atualizam o estado localmente ---
+
+  const handleAddOrder = useCallback(
+    async (
+      newOrderData: Omit<
+        Order,
+        'id' | 'profile_id' | 'restaurant_id' | 'created_at' | 'updated_at' | 'daily_order_number'
+      >,
+      itemsToAdd: FormOrderItem[],
+      cartRestaurantId: string
+    ) => {
+      const newOrder = await addOrderMutation(newOrderData, itemsToAdd, cartRestaurantId);
+
+      // ATUALIZAÇÃO LOCAL IMEDIATA
+      setOrders((prev) => [newOrder, ...prev.filter((o) => o.id !== newOrder.id)]);
+      setNewOrderIds((prev) => [...prev, newOrder.id]); // MARCAR COMO NOVO
+
+      // Som de novo pedido se o restaurante permitir
+      if (currentRestaurant?.receive_order_notifications) {
+        soundManager.playSaleSound();
+      }
+      return newOrder;
+    },
+    [addOrderMutation, currentRestaurant?.receive_order_notifications]
+  );
+
+  const handleUpdateOrder = useCallback(
+    async (updatedOrder: Order) => {
+      const data = await updateOrderMutation(updatedOrder);
+
+      // ATUALIZAÇÃO LOCAL IMEDIATA
+      setOrders((prev) => prev.map((order) => (order.id === data.id ? data : order)));
+      setNewOrderIds((prev) => prev.filter((id) => id !== data.id)); // Remover da lista de novos
+
+      // Notificação de venda concluída
+      if (
+        (isAdmin || isSuperAdmin) &&
+        currentRestaurant?.receive_delivery_notifications &&
+        data.status === 'Entregue'
+      ) {
+        soundManager.playSaleSound();
+      }
+    },
+    [updateOrderMutation, isAdmin, isSuperAdmin, currentRestaurant?.receive_delivery_notifications]
+  );
+
+  const handleCancelOrder = useCallback(
+    async (orderId: string) => {
+      const data = await cancelOrderMutation(orderId);
+
+      // ATUALIZAÇÃO LOCAL IMEDIATA
+      setOrders((prev) => prev.map((order) => (order.id === data.id ? data : order)));
+      setNewOrderIds((prev) => prev.filter((id) => id !== data.id)); // Remover da lista de novos
+    },
+    [cancelOrderMutation]
+  );
+
+  const handleDeleteOrder = useCallback(
+    async (orderId: string) => {
+      const deletedId = await deleteOrderMutation(orderId);
+
+      // ATUALIZAÇÃO LOCAL IMEDIATA
+      setOrders((prev) => prev.filter((order) => order.id !== deletedId));
+      setNewOrderIds((prev) => prev.filter((id) => id !== deletedId)); // Remover da lista de novos
+    },
+    [deleteOrderMutation]
+  );
+
+  // 🔄 Realtime Subscription and Initial Load
+  useEffect(() => {
+    let cancelled = false;
+    let subscription: any = null;
+
+    const runFetchAndSubscribe = async () => {
+      const targetRestaurantId =
+        isAdmin || isSuperAdmin ? currentRestaurant?.id : profile?.restaurant_id;
+
+      console.log(
+        `[OrderContext] useEffect: Starting runFetchAndSubscribe. isLoadingSession=${isLoadingSession}, isLoadingRestaurants=${isLoadingRestaurants}, session=${!!session}, targetRestaurantId=${targetRestaurantId}`
+      );
+
+      if (
+        !session ||
+        (!isAdmin && !isSuperAdmin && !isCustomer) ||
+        (!targetRestaurantId && !isSuperAdmin)
+      ) {
+        if (!cancelled) {
+          setOrders([]);
+          setIsLoadingOrders(false);
+          console.log(
+            '[OrderContext] useEffect: No valid user context for fetching orders, clearing orders and skipping subscription.'
+          );
+        }
+        if (subscription) {
+          supabase.removeChannel(subscription);
+          subscription = null;
+          console.log(
+            '[OrderContext] useEffect: Unsubscribed existing channel due to invalid context.'
+          );
+        }
+        return;
+      }
+
+      if (isLoadingSession || isLoadingRestaurants) {
+        if (!cancelled) {
+          setIsLoadingOrders(true);
+          console.log(
+            '[OrderContext] useEffect: Session or Restaurant still loading, setting loading state.'
+          );
+        }
+        return;
+      }
+
+      if (session && targetRestaurantId) {
+        console.log(
+          `[OrderContext] useEffect: Valid context found. Target Restaurant ID: ${targetRestaurantId}.`
+        );
+        // 1. Initial fetch
+        await fetchOrders(profile?.id || null, isAdmin, isSuperAdmin, targetRestaurantId);
+
+        // 2. Setup Realtime Subscription
+        if (subscription) {
+          supabase.removeChannel(subscription);
+          subscription = null;
+          console.log(
+            '[OrderContext] useEffect: Removed old subscription before creating new one.'
+          );
+        }
+
+        console.log(
+          `[OrderContext] useEffect: Subscribing to 'orders_channel_${targetRestaurantId}' for real-time changes.`
+        );
+        subscription = supabase
+          .channel(`orders_channel_${targetRestaurantId}`)
+          .on(
+            'postgres_changes',
+            {
+              event: '*', // Listen for all events
+              schema: 'public',
+              table: 'orders',
+              filter: `restaurant_id=eq.${targetRestaurantId}`,
+            },
+            async (payload) => {
+              console.log(
+                '[OrderContext] Realtime Event Received:',
+                payload.eventType,
+                'for ID:',
+                payload.new?.id || payload.old?.id
+              );
+              const newOrder = payload.new as Order;
+              const oldOrder = payload.old as Order;
+
+              let fetchedOrder: Order | null = null;
+              if (payload.eventType !== 'DELETE') {
+                const { data, error } = await supabase
+                  .from('orders')
+                  .select('*, order_items(*)')
+                  .eq('id', newOrder.id)
+                  .single();
+                if (error) {
+                  console.error(
+                    '[OrderContext] Realtime: Erro ao buscar pedido em tempo real:',
+                    error
+                  );
+                } else {
+                  fetchedOrder = data as Order;
+                  console.log('[OrderContext] Realtime: Fetched full order:', fetchedOrder);
+                }
+              }
+
+              setOrders((prev) => {
+                if (payload.eventType === 'INSERT' && fetchedOrder) {
+                  console.log(
+                    '[OrderContext] Realtime: INSERT event. Adding new order to state.'
+                  );
+                  return [fetchedOrder, ...prev.filter((o) => o.id !== fetchedOrder!.id)];
+                } else if (payload.eventType === 'UPDATE' && fetchedOrder) {
+                  console.log(
+                    '[OrderContext] Realtime: UPDATE event. Updating order in state.'
+                  );
+                  return prev.map((order) =>
+                    order.id === fetchedOrder!.id ? fetchedOrder! : order
+                  );
+                } else if (payload.eventType === 'DELETE') {
+                  console.log(
+                    '[OrderContext] Realtime: DELETE event. Removing order from state.'
+                  );
+                  return prev.filter((order) => order.id !== oldOrder.id);
+                }
+                return prev;
+              });
+
+              if (
+                payload.eventType === 'INSERT' &&
+                fetchedOrder &&
+                (isAdmin || isSuperAdmin) &&
+                currentRestaurant?.receive_order_notifications
+              ) {
+                toast.success(`🔥 Novo Pedido Recebido!`, {
+                  description: `Pedido #${fetchedOrder.daily_order_number} de ${fetchedOrder.client_name}`,
+                  duration: 4000,
+                  position: 'top-center',
+                });
+                soundManager.playSaleSound();
+                setNewOrderIds((prev) => [...prev, fetchedOrder.id]);
+                console.log('[OrderContext] Realtime: New order notification triggered.');
+              }
+
+              if (
+                payload.eventType === 'UPDATE' &&
+                fetchedOrder &&
+                (isAdmin || isSuperAdmin) &&
+                currentRestaurant?.receive_delivery_notifications &&
+                fetchedOrder.status === 'Entregue' &&
+                oldOrder.status !== 'Entregue'
+              ) {
+                toast.success(`✅ Entrega Concluída!`, {
+                  description: `Pedido #${fetchedOrder.daily_order_number} entregue.`,
+                  duration: 4000,
+                  position: 'top-center',
+                });
+                soundManager.playSaleSound();
+                console.log(
+                  '[OrderContext] Realtime: Delivery completed notification triggered.'
+                );
+              }
+            }
+          )
+          .subscribe();
+
+        return () => {
+          if (subscription) {
+            supabase.removeChannel(subscription);
+            console.log(
+              `[OrderContext] useEffect cleanup: Unsubscribed from orders_channel_${targetRestaurantId}`
+            );
+          }
+        };
+      } else {
+        if (!cancelled) {
+          setOrders([]);
+          setIsLoadingOrders(false);
+          console.log(
+            '[OrderContext] useEffect: No session or targetRestaurantId, clearing orders and skipping subscription setup.'
+          );
+        }
+      }
+    };
+
+    runFetchAndSubscribe();
+
+    return () => {
+      cancelled = true;
+      if (subscription) {
+        supabase.removeChannel(subscription);
+      }
+    };
+  }, [
+    isLoadingSession,
+    isLoadingRestaurants,
+    session,
+    profile?.id,
+    profile?.restaurant_id,
+    isAdmin,
+    isCustomer,
+    isSuperAdmin,
+    currentRestaurant?.id,
+    currentRestaurant?.receive_order_notifications,
+    currentRestaurant?.receive_delivery_notifications,
+    fetchOrders,
+  ]);
+
+  const contextValue = useMemo(
+    () => ({
+      orders,
+      isLoadingOrders,
+      addOrder: handleAddOrder,
+      updateOrder: handleUpdateOrder,
+      cancelOrder: handleCancelOrder,
+      deleteOrder: handleDeleteOrder,
+      fetchOrders: handleFetchOrdersWrapper,
+      newOrderIds,
+      markOrderAsViewed,
+    }),
+    [
+      orders,
+      isLoadingOrders,
+      handleAddOrder,
+      handleUpdateOrder,
+      handleCancelOrder,
+      handleDeleteOrder,
+      handleFetchOrdersWrapper,
+      newOrderIds,
+      markOrderAsViewed,
+    ]
+  );
+
+  return <OrderContext.Provider value={contextValue}>{children}</OrderContext.Provider>;
+};

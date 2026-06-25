@@ -1,0 +1,205 @@
+import React from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CalendarIcon, MapPin } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { cn, createLocalDate } from "@/lib/utils";
+import { Order } from "@/context/OrderContext";
+
+interface EditOrderDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  order: Order | null;
+  onEditOrder: (updatedOrder: Order) => void;
+  availableClients: string[];
+  availableDeliverymen: string[];
+  markOrderAsViewed?: (orderId: string) => void; // NOVO: Callback opcional
+}
+
+type OrderStatus = "Confirmado" | "Em Preparo" | "Em Entrega" | "Entregue" | "Cancelado" | "Problema" | "Pendente" | "Recusado" | "Devolvido"; // ADICIONADO: Recusado, Devolvido
+
+const EditOrderDialog: React.FC<EditOrderDialogProps> = ({ isOpen, onClose, order, onEditOrder, availableClients, availableDeliverymen, markOrderAsViewed }) => {
+  const [clientName, setClientName] = React.useState(order?.client_name || "");
+  const [deliveryman, setDeliveryman] = React.useState(order?.deliveryman || "");
+  const [order_date, setOrderDate] = React.useState<Date | undefined>(order?.order_date ? createLocalDate(order.order_date) : undefined); // Usar createLocalDate
+  const [status, setStatus] = React.useState<OrderStatus>(order?.status as OrderStatus || "Pendente");
+  const [total, setTotal] = React.useState(order?.total.toString() || "");
+  const [client_address, setClientAddress] = React.useState(order?.client_address || "");
+  const [tracking_link, setTrackingLink] = React.useState(order?.tracking_link || "");
+  const [items, setItems] = React.useState(order?.items || "");
+
+
+  React.useEffect(() => {
+    if (order) {
+      setClientName(order.client_name);
+      setDeliveryman(order.deliveryman);
+      setOrderDate(createLocalDate(order.order_date)); // Usar createLocalDate
+      setStatus(order.status as OrderStatus);
+      setTotal(order.total.toFixed(2));
+      setClientAddress(order.client_address);
+      setTrackingLink(order.tracking_link || "");
+      setItems(order.items);
+      
+      if (isOpen && markOrderAsViewed) { // MARCAR COMO VISUALIZADO AO ABRIR
+        markOrderAsViewed(order.id);
+      }
+    }
+  }, [order, isOpen, markOrderAsViewed]);
+
+  const handleSubmit = () => {
+    if (order && clientName && deliveryman && order_date && status && total && client_address && items) {
+      onEditOrder({
+        ...order,
+        client_name: clientName,
+        deliveryman,
+        order_date: format(order_date, "yyyy-MM-dd"),
+        status,
+        total: parseFloat(total),
+        client_address,
+        tracking_link: tracking_link || undefined,
+        items,
+      });
+      onClose();
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Editar Pedido</DialogTitle>
+          <DialogDescription>
+            Faça alterações no pedido existente.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          {order?.daily_order_number && (
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">
+                Nº Diário
+              </Label>
+              <Input value={order.daily_order_number} className="col-span-3 bg-muted" readOnly />
+            </div>
+          )}
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="clientName" className="text-right">
+              Cliente
+            </Label>
+            <Select value={clientName} onValueChange={setClientName}>
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Selecione o cliente" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableClients.map((client) => (
+                  <SelectItem key={client} value={client}>{client}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="deliveryman" className="text-right">
+              Entregador
+            </Label>
+            <Select value={deliveryman} onValueChange={setDeliveryman}>
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Selecione o entregador" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableDeliverymen.map((dm) => (
+                  <SelectItem key={dm} value={dm}>{dm}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="order_date" className="text-right">
+              Data
+            </Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "col-span-3 justify-start text-left font-normal",
+                    !order_date && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {order_date ? format(order_date, "PPP") : <span>Selecione uma data</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={order_date}
+                  onSelect={setOrderDate}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="status" className="text-right">
+              Status
+            </Label>
+            <Select value={status} onValueChange={(value: OrderStatus) => setStatus(value)}>
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Selecione o status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Pendente">Pendente</SelectItem>
+                <SelectItem value="Confirmado">Confirmado</SelectItem>
+                <SelectItem value="Em Preparo">Em Preparo</SelectItem>
+                <SelectItem value="Em Entrega">Em Entrega</SelectItem>
+                <SelectItem value="Entregue">Entregue</SelectItem>
+                <SelectItem value="Cancelado">Cancelado</SelectItem>
+                <SelectItem value="Problema">Problema</SelectItem>
+                <SelectItem value="Recusado">Recusado</SelectItem> {/* ADICIONADO: Recusado */}
+                <SelectItem value="Devolvido">Devolvido</SelectItem> {/* NOVO: Adicionado Devolvido */}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="total" className="text-right">
+              Total (R$)
+            </Label>
+            <Input id="total" type="number" value={total} onChange={(e) => setTotal(e.target.value)} className="col-span-3" />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="client_address" className="text-right">
+              Endereço de Entrega
+            </Label>
+            <Input id="client_address" value={client_address} onChange={(e) => setClientAddress(e.target.value)} className="col-span-3" />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="tracking_link" className="text-right">
+              Link Rastreamento
+            </Label>
+            <div className="relative col-span-3">
+              <Input id="tracking_link" value={tracking_link} onChange={(e) => setTrackingLink(e.target.value)} placeholder="Ex: https://maps.app.goo.gl/..." className="pl-10" />
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            </div>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="items" className="text-right">
+              Itens
+            </Label>
+            <Textarea id="items" value={items} onChange={(e) => setItems(e.target.value)} className="col-span-3" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button type="submit" onClick={handleSubmit}>Salvar Alterações</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default EditOrderDialog;

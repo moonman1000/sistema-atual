@@ -1,0 +1,134 @@
+"use client";
+
+import React, { useEffect, useState } from "react";
+import { useNavigate, useParams, Link } from "react-router-dom";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Pizza, Loader2, AlertCircle } from "lucide-react";
+import { Auth } from "@supabase/auth-ui-react";
+import { ThemeSupa } from "@supabase/auth-ui-shared";
+import { supabase } from "@/integrations/supabase/client";
+import { useSession } from "@/context/SessionContext";
+import { useRestaurant } from "@/context/RestaurantContext";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+
+const AdminLoginPage = () => { // RENOMEADO
+  const navigate = useNavigate();
+  const { session, isLoading, isCustomer, isAdmin, isSuperAdmin, profile } = useSession();
+  const { currentRestaurant, isLoadingRestaurants, allRestaurants } = useRestaurant();
+  // Removido restaurantIdFromParams pois esta página é para login de admin geral
+
+  const [authKey, setAuthKey] = useState(0);
+  // Para login de admin, não precisamos de um restaurant_id inicial no Auth component.
+  // O admin pode não ter um restaurante ainda ou pode gerenciar vários.
+  // A associação será feita após o login ou na página de criação de restaurante.
+  const restaurantIdForAuth = null; // Definido como null para login de admin
+
+  useEffect(() => {
+    // O authKey não é mais necessário aqui, pois restaurantIdForAuth é sempre null
+    // if (restaurantIdForAuth) setAuthKey(prev => prev + 1);
+  }, [restaurantIdForAuth]);
+
+  useEffect(() => {
+    if (!isLoading && session) {
+      if (profile) {
+        if (isCustomer) {
+          toast.success("Login ou cadastro de cliente bem-sucedido!");
+          navigate("/profile");
+        } else if (isAdmin || isSuperAdmin) {
+          toast.info("Você está logado como administrador. Redirecionando...");
+          navigate("/admin/dashboard");
+        } else {
+          console.error("AdminLoginPage: Usuário com perfil, mas papel desconhecido:", profile.role, "ID:", profile.id);
+          toast.error("Função de usuário desconhecida. Contate o suporte.");
+        }
+      }
+    }
+  }, [session, isLoading, profile, isCustomer, isAdmin, isSuperAdmin, navigate]);
+
+  // Removido restaurantNotFound e shouldBlockAuth, pois não são relevantes para login de admin geral
+  // const restaurantNotFound = false; // Não aplicável aqui
+  // const shouldBlockAuth = false; // Não aplicável aqui
+
+  if (session && !isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 to-red-50">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center gap-4">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Redirecionando...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (isLoading || isLoadingRestaurants) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 to-red-50">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center gap-4">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="ml-2 text-muted-foreground">Carregando...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Removido o bloco `if (restaurantNotFound)`
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 to-red-50 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+            <Pizza className="h-6 w-6 text-primary" />
+          </div>
+          <CardTitle>Área Administrativa</CardTitle> {/* ATUALIZADO: Título para Admin */}
+          <CardDescription>
+            Faça login ou crie uma conta para gerenciar seu estabelecimento.
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent>
+          {/* O Auth component não precisa de additionalData.restaurant_id para login de admin */}
+          <Auth
+            key={authKey} // Mantido authKey para garantir que o componente Auth seja remontado se necessário
+            supabaseClient={supabase}
+            providers={[]}
+            appearance={{
+              theme: ThemeSupa,
+              variables: {
+                default: {
+                  colors: {
+                    brand: "hsl(var(--primary))",
+                    brandAccent: "hsl(var(--primary-foreground))",
+                  },
+                },
+              },
+            }}
+            theme="light"
+            redirectTo={window.location.origin + "/admin/dashboard"} // Redireciona para o dashboard admin
+            // additionalData={restaurantIdForAuth ? { restaurant_id: restaurantIdForAuth } : undefined} // Removido
+          />
+
+          <div className="mt-4 text-center">
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/">
+                Voltar para a Página Inicial
+              </Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default AdminLoginPage;

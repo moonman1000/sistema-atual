@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<title>Pizza Shop - Product Details</title>
+<link crossorigin="" href="https://fonts.gstatic.com/" rel="preconnect"/>
+<link as="style" href="https://fonts.googleapis.com/css2?display=swap&amp;family=Inter:wght@400;500;700;900&amp;family=Noto+Sans:wght@400;500;700;900" onload="this.rel='stylesheet'" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#0F4C75",
+            "action": "#FF7A00",
+            "background": "#FFFFFF",
+            "alt-background": "#F6F7FA",
+            "text-primary": "#333333",
+          },
+          fontFamily: {
+            "display": ["Inter", "Roboto", "sans-serif"]
+          },
+          borderRadius: {
+            "DEFAULT": "0.5rem",
+            "lg": "0.75rem",
+            "xl": "1rem",
+            "full": "9999px"
+          },
+        },
+      },
+    }
+  </script>
+<style>
+    body {
+      font-family: 'Inter', 'Roboto', sans-serif;
+    }
+    .gradient-bg {
+      background: linear-gradient(180deg, #FFFFFF 0%, #F6F7FA 100%);
+    }
+    .dark .gradient-bg {
+       background: linear-gradient(180deg, #1A1A1A 0%, #111111 100%);
+    }
+  </style>
+</head>
+<body class="bg-background dark:bg-[#111111] text-text-primary dark:text-gray-200 font-display">
+<div class="min-h-screen flex flex-col">
+<header class="bg-background/80 dark:bg-[#111111]/80 backdrop-blur-sm sticky top-0 z-50 border-b border-alt-background dark:border-gray-800">
+<div class="container mx-auto px-4 sm:px-6 lg:px-8">
+<div class="flex items-center justify-between h-20">
+<div class="flex items-center space-x-3">
+<svg class="h-8 w-8 text-primary" fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M24 45.8096C19.6865 45.8096 15.4698 44.5305 11.8832 42.134C8.29667 39.7376 5.50128 36.3314 3.85056 32.3462C2.19985 28.361 1.76794 23.9758 2.60947 19.7452C3.451 15.5145 5.52816 11.6284 8.57829 8.5783C11.6284 5.52817 15.5145 3.45101 19.7452 2.60948C23.9758 1.76795 28.361 2.19986 32.3462 3.85057C36.3314 5.50129 39.7376 8.29668 42.134 11.8833C44.5305 15.4698 45.8096 19.6865 45.8096 24L24 24L24 45.8096Z" fill="currentColor"></path>
+</svg>
+<h1 class="text-2xl font-bold text-text-primary dark:text-white">PizzaSlice</h1>
+</div>
+<nav class="hidden md:flex items-center space-x-8">
+<a class="text-text-primary dark:text-gray-300 hover:text-primary dark:hover:text-action transition-colors" href="#">Menu</a>
+<a class="text-text-primary dark:text-gray-300 hover:text-primary dark:hover:text-action transition-colors" href="#">Deals</a>
+<a class="text-text-primary dark:text-gray-300 hover:text-primary dark:hover:text-action transition-colors" href="#">Locations</a>
+</nav>
+<div class="flex items-center space-x-4">
+<button class="hidden sm:block px-6 py-2.5 rounded-lg text-sm font-semibold bg-alt-background dark:bg-gray-800 text-text-primary dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Sign In</button>
+<button class="p-2.5 rounded-lg bg-alt-background dark:bg-gray-800 text-text-primary dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors relative">
+<span class="material-symbols-outlined">shopping_cart</span>
+<span class="absolute -top-1 -right-1 h-5 w-5 bg-action text-white text-xs font-bold rounded-full flex items-center justify-center">2</span>
+</button>
+</div>
+</div>
+</div>
+</header>
+<main class="flex-grow">
+<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+<div class="relative rounded-xl overflow-hidden shadow-lg">
+<img alt="Classic Pepperoni Pizza" class="w-full h-auto object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB7Sk6Yz0vDEnxmUqJZHg70SbynqeU8bTg9lvP1sR5aNffwYCAQ5FCAQcF83D_v5Kx4w2840sWDcbgcIMknutdBjGb5fIH_EyDSR82rb0d9jcTtuhdcEJ450e7JDWmbl7upQekZ_hzYnHMUbcwKeD_dGNFq-Qr52xD3pf6-ExH3CM3YPMcJGPK0nDA0T2_GHfys8spveNj21M0qWVbHqzIy5N8xrFt_ohi-kCdllHhSkFyv455BIlqiJ24fWaeMqhgVG_4JST7R6aXZ"/>
+<div class="absolute top-4 left-4 px-3 py-1 bg-red-600 text-white rounded-full text-sm font-semibold">
+              Urgente! Poucas unidades em estoque!
+            </div>
+</div>
+<div class="space-y-6 p-4 md:p-0">
+<div>
+<h1 class="text-4xl font-bold text-primary dark:text-white">The Classic Pepperoni</h1>
+<p class="text-lg text-gray-600 dark:text-gray-400 mt-2">Our signature pizza with a generous layer of pepperoni, mozzarella cheese, and our classic tomato sauce. Baked to perfection on a crispy crust.</p>
+</div>
+<div class="p-4 shadow-sm bg-background dark:bg-gray-800 rounded-lg">
+<div class="p-0 mb-4">
+<h3 class="text-xl font-semibold text-text-primary dark:text-white">Escolha seu tamanho</h3>
+</div>
+<div class="p-0">
+<div class="flex flex-wrap gap-3">
+<div class="flex flex-col items-center justify-center rounded-md border-2 border-alt-background dark:border-gray-700 bg-background dark:bg-gray-800 p-4 text-sm cursor-pointer min-w-[100px] has-[:checked]:border-primary dark:has-[:checked]:border-action has-[:checked]:bg-primary/5 dark:has-[:checked]:bg-action/10 transition-all">
+<input checked="" class="sr-only" id="size-small" name="size" type="radio" value="small"/>
+<label class="flex flex-col items-center justify-center cursor-pointer" for="size-small">
+<span class="font-medium text-text-primary dark:text-white">Small</span>
+<span class="text-xs text-gray-500 dark:text-gray-400">$12.99</span>
+</label>
+</div>
+<div class="flex flex-col items-center justify-center rounded-md border-2 border-alt-background dark:border-gray-700 bg-background dark:bg-gray-800 p-4 text-sm cursor-pointer min-w-[100px] has-[:checked]:border-primary dark:has-[:checked]:border-action has-[:checked]:bg-primary/5 dark:has-[:checked]:bg-action/10 transition-all">
+<input class="sr-only" id="size-medium" name="size" type="radio" value="medium"/>
+<label class="flex flex-col items-center justify-center cursor-pointer" for="size-medium">
+<span class="font-medium text-text-primary dark:text-white">Medium</span>
+<span class="text-xs text-gray-500 dark:text-gray-400">$14.99</span>
+</label>
+</div>
+<div class="flex flex-col items-center justify-center rounded-md border-2 border-alt-background dark:border-gray-700 bg-background dark:bg-gray-800 p-4 text-sm cursor-pointer min-w-[100px] has-[:checked]:border-primary dark:has-[:checked]:border-action has-[:checked]:bg-primary/5 dark:has-[:checked]:bg-action/10 transition-all">
+<input class="sr-only" id="size-large" name="size" type="radio" value="large"/>
+<label class="flex flex-col items-center justify-center cursor-pointer" for="size-large">
+<span class="font-medium text-text-primary dark:text-white">Large</span>
+<span class="text-xs text-gray-500 dark:text-gray-400">$16.99</span>
+</label>
+</div>
+</div>
+</div>
+</div>
+<div class="p-4 shadow-sm bg-background dark:bg-gray-800 rounded-lg">
+<div class="p-0 mb-4">
+<h3 class="text-xl font-semibold text-text-primary dark:text-white">Adicionar Coberturas</h3>
+</div>
+<div class="p-0">
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+<div class="flex items-center space-x-2 p-2 border rounded-md hover:bg-alt-background dark:hover:bg-gray-700 transition-colors">
+<input class="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary/50 dark:bg-gray-700 dark:border-gray-600 dark:checked:bg-action dark:focus:ring-action/50" id="topping-extra-cheese" type="checkbox"/>
+<label class="text-sm font-medium cursor-pointer flex-1 text-text-primary dark:text-gray-300" for="topping-extra-cheese">
+                      Extra Cheese <span class="text-gray-500 dark:text-gray-400 text-xs">(+ $1.50)</span>
+</label>
+</div>
+<div class="flex items-center space-x-2 p-2 border rounded-md hover:bg-alt-background dark:hover:bg-gray-700 transition-colors">
+<input class="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary/50 dark:bg-gray-700 dark:border-gray-600 dark:checked:bg-action dark:focus:ring-action/50" id="topping-mushrooms" type="checkbox"/>
+<label class="text-sm font-medium cursor-pointer flex-1 text-text-primary dark:text-gray-300" for="topping-mushrooms">
+                      Mushrooms <span class="text-gray-500 dark:text-gray-400 text-xs">(+ $1.50)</span>
+</label>
+</div>
+<div class="flex items-center space-x-2 p-2 border rounded-md hover:bg-alt-background dark:hover:bg-gray-700 transition-colors">
+<input class="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary/50 dark:bg-gray-700 dark:border-gray-600 dark:checked:bg-action dark:focus:ring-action/50" id="topping-onions" type="checkbox"/>
+<label class="text-sm font-medium cursor-pointer flex-1 text-text-primary dark:text-gray-300" for="topping-onions">
+                      Onions <span class="text-gray-500 dark:text-gray-400 text-xs">(+ $1.50)</span>
+</label>
+</div>
+<div class="flex items-center space-x-2 p-2 border rounded-md hover:bg-alt-background dark:hover:bg-gray-700 transition-colors">
+<input class="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary/50 dark:bg-gray-700 dark:border-gray-600 dark:checked:bg-action dark:focus:ring-action/50" id="topping-sausage" type="checkbox"/>
+<label class="text-sm font-medium cursor-pointer flex-1 text-text-primary dark:text-gray-300" for="topping-sausage">
+                      Sausage <span class="text-gray-500 dark:text-gray-400 text-xs">(+ $1.50)</span>
+</label>
+</div>
+</div>
+</div>
+</div>
+<hr class="my-6 border-alt-background dark:border-gray-700"/>
+<div class="flex flex-col sm:flex-row items-center justify-between gap-4 bg-alt-background dark:bg-gray-800/50 p-4 rounded-lg shadow-inner">
+<span class="text-3xl font-bold text-primary dark:text-action">Total: $12.99</span>
+<div class="flex items-center space-x-2">
+<button class="h-10 w-10 flex items-center justify-center rounded-md border border-text/20 dark:border-background-light/20 text-text dark:text-background-light hover:bg-alt-background dark:hover:bg-text/10 transition-colors">
+<span class="material-symbols-outlined text-xl">remove</span>
+</button>
+<span class="text-xl font-medium w-8 text-center text-text-primary dark:text-white">1</span>
+<button class="h-10 w-10 flex items-center justify-center rounded-md border border-text/20 dark:border-background-light/20 text-text dark:text-background-light hover:bg-alt-background dark:hover:bg-text/10 transition-colors">
+<span class="material-symbols-outlined text-xl">add</span>
+</button>
+<button class="bg-action hover:bg-action/90 text-white text-base px-6 py-3 rounded-lg flex items-center space-x-2 transition-transform transform active:scale-95">
+<span class="material-symbols-outlined">add_shopping_cart</span>
+<span>Add to Cart</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<section class="mt-16 bg-alt-background dark:bg-gray-800/50 p-8 rounded-xl shadow-lg">
+<h2 class="text-3xl font-bold mb-8 text-center text-primary dark:text-white">O que nossos clientes dizem</h2>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<div class="shadow-md hover:shadow-lg transition-shadow duration-300 bg-background dark:bg-gray-800/50 rounded-xl p-6">
+<div class="flex items-center space-x-4 mb-4">
+<img alt="Avatar" class="w-12 h-12 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCfFSg_-sN0gk4S9Y5slCq5dJZV0YfEsQnKhatLdwMKXQoC1AZcv2hNXJ-mnxV0UCYFmibwI1JJffEURek4EpoDhN4ZkMPbd-4NFvntPLu_kG2_OvxBjEUG1Ixkb0PHXC6KiOjY2vLKOFqbbwvv8ljMXYwa4K9FXtOJUdLNZ7eI7jMZ3X2NtK2F6wJtA4G-dUHQoGBtfsYkwigtShhQwScArL0VTj9yHrCUoW4m_db1tgkKhWGHeWZdjobwke2kOx7rg9L4WJrbRXYZ"/>
+<div>
+<p class="font-bold text-text-primary dark:text-white">Ethan Carter</p>
+<div class="flex items-center text-sm text-gray-500 dark:text-gray-400">
+<span class="material-symbols-outlined text-yellow-500 text-base">star</span>
+<span class="material-symbols-outlined text-yellow-500 text-base">star</span>
+<span class="material-symbols-outlined text-yellow-500 text-base">star</span>
+<span class="material-symbols-outlined text-yellow-500 text-base">star</span>
+<span class="material-symbols-outlined text-yellow-500 text-base">star</span>
+<span class="ml-2">2 weeks ago</span>
+</div>
+</div>
+</div>
+<p class="text-gray-600 dark:text-gray-300">"Best pizza I've had in a long time! The pepperoni is perfectly crispy, and the crust is amazing."</p>
+</div>
+<div class="shadow-md hover:shadow-lg transition-shadow duration-300 bg-background dark:bg-gray-800/50 rounded-xl p-6">
+<div class="flex items-center space-x-4 mb-4">
+<img alt="Avatar" class="w-12 h-12 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFqwDWpEZ2HPg3_a2xfoyP6706RTrbMf0oVnBN0dtIFM_I8z_yubSnFlsJVWmodq74LtGHczvHMsi8Zd85JS2rn8XEf03fuGg65mbIqA4vIZF45evSSZDTcYrZ8Wq1rRxB8S4PHdXUuoWu3tSFFAcvMRgI-g8S7r8ic7MHihTqWvxDKtr079bL5qhbmXRhsaHPfOLof6z1COQ-9UbqkOtkGVfv5Z6T6WDUkKGhtxbov27gekfVZsQcrx7MFBluCXQTyGDQXG2M2V2X"/>
+<div>
+<p class="font-bold text-text-primary dark:text-white">Olivia Bennett</p>
+<div class="flex items-center text-sm text-gray-500 dark:text-gray-400">
+<span class="material-symbols-outlined text-yellow-500 text-base">star</span>
+<span class="material-symbols-outlined text-yellow-500 text-base">star</span>
+<span class="material-symbols-outlined text-yellow-500 text-base">star</span>
+<span class="material-symbols-outlined text-yellow-500 text-base">star</span>
+<span class="material-symbols-outlined text-gray-300 dark:text-gray-600 text-base">star</span>
+<span class="ml-2">1 month ago</span>
+</div>
+</div>
+</div>
+<p class="text-gray-600 dark:text-gray-300">"Really good pizza, but I wish there were more topping options. Still, the quality is top-notch."</p>
+</div>
+<div class="shadow-md hover:shadow-lg transition-shadow duration-300 bg-background dark:bg-gray-800/50 rounded-xl p-6">
+<div class="flex items-center space-x-4 mb-4">
+<div class="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
+<span class="text-primary font-bold text-lg">MJ</span>
+</div>
+<div>
+<p class="font-bold text-text-primary dark:text-white">Marcus Jones</p>
+<p class="text-sm text-gray-500 dark:text-gray-400">3 days ago</p>
+</div>
+</div>
+<div class="flex text-action">
+<span class="material-symbols-outlined text-yellow-500 text-base">star</span>
+<span class="material-symbols-outlined text-yellow-500 text-base">star</span>
+<span class="material-symbols-outlined text-yellow-500 text-base">star</span>
+<span class="material-symbols-outlined text-yellow-500 text-base">star</span>
+<span class="material-symbols-outlined text-yellow-500 text-base">star_half</span>
+</div>
+<p class="text-gray-600 dark:text-gray-300">"Absolutely delicious! The delivery was super fast too. Will definitely be ordering again soon."</p>
+</div>
+</div>
+</section>
+</div>
+</main>
+</div>
+
+</body></html>

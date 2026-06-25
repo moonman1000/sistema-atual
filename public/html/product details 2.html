@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Pizza Shop - My Account</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<style type="text/tailwindcss">
+        @layer base {
+            :root {
+                --primary: #0F4C75;
+                --action: #FF7A00;
+                --bg: #FFFFFF;
+                --alt-bg: #F6F7FA;
+                --text: #333333;
+            }
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .gradient-bg {
+            background: linear-gradient(180deg, #F6F7FA 0%, #FFFFFF 100%);
+        }
+    </style>
+</head>
+<body class="bg-alt-bg text-text">
+<div class="min-h-screen flex flex-col">
+<header class="bg-bg/80 backdrop-blur-sm sticky top-0 z-50 border-b border-gray-200">
+<div class="container mx-auto px-4 sm:px-6 lg:px-8">
+<div class="flex items-center justify-between h-20">
+<div class="flex items-center space-x-3">
+<svg class="h-8 w-8 text-primary" fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M24 45.8096C19.6865 45.8096 15.4698 44.5305 11.8832 42.134C8.29667 39.7376 5.50128 36.3314 3.85056 32.3462C2.19985 28.361 1.76794 23.9758 2.60947 19.7452C3.451 15.5145 5.52816 11.6284 8.57829 8.5783C11.6284 5.52817 15.5145 3.45101 19.7452 2.60948C23.9758 1.76795 28.361 2.19986 32.3462 3.85057C36.3314 5.50129 39.7376 8.29668 42.134 11.8833C44.5305 15.4698 45.8096 19.6865 45.8096 24L24 24L24 45.8096Z" fill="currentColor"></path>
+</svg>
+<h1 class="text-2xl font-bold text-text">PizzaSlice</h1>
+</div>
+<nav class="hidden md:flex items-center space-x-8">
+<a class="text-text hover:text-primary transition-colors" href="#">Menu</a>
+<a class="text-text hover:text-primary transition-colors" href="#">Deals</a>
+<a class="text-text hover:text-primary transition-colors" href="#">Locations</a>
+</nav>
+<div class="flex items-center space-x-4">
+<div class="flex items-center space-x-2">
+<img alt="Jane Doe" class="w-10 h-10 rounded-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAq8CL3-k1OFsrfp3iiyp7sDpdSGqitqIE9gVFafDJ60zawcwaZtVmvoWoIw3ytcuHW0w6yhnpxDU5ZatEf4e47AGed86erEThKU0ZbZ7BIcuVTKzSRj40KiD02_zeCiHcjBXWt89B9r6Hub9LpnU-0A9XxIyN7YMNOz9k4sQ0LAIGkUI0WKG_WkoBUBMJz6qlG19pv1E3V1jVnJYUJzfxjqYF4bjGScEcXCY_WeTIt9INud_PJ6d1Kg4DCebrRWQh_O21ntTFVh3Qt"/>
+<span class="hidden sm:inline font-semibold">Jane D.</span>
+</div>
+<button class="p-2.5 rounded-lg bg-alt-bg text-text hover:bg-gray-200 transition-colors relative">
+<span class="material-symbols-outlined">shopping_cart</span>
+<span class="absolute -top-1 -right-1 h-5 w-5 bg-action text-white text-xs font-bold rounded-full flex items-center justify-center">2</span>
+</button>
+<button class="md:hidden p-2.5 rounded-lg bg-alt-bg text-text hover:bg-gray-200 transition-colors">
+<span class="material-symbols-outlined">menu</span>
+</button>
+</div>
+</div>
+</div>
+</header>
+<main class="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
+<div class="grid lg:grid-cols-4 gap-8">
+<aside class="lg:col-span-1">
+<div class="bg-bg p-6 rounded-xl shadow-sm sticky top-28">
+<div class="flex items-center gap-4 mb-6">
+<img alt="Jane Doe" class="w-16 h-16 rounded-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAEz9tzXKD465TdG7m5fBeBATwH7gRSEfzw0bHm6Q_Z2YwbzvfqvbLLXWLFEcU7D0EgO5mXH8vgX1ei6glKP-Oref8VqmRZwFJQigAYUxaIhVTk6Zmnexh9g1JtvjhoNh5LChrEH0wVUo22cJ4g3nS_2HNZEPVZvGFkkqbc9XSc2d3W4z5-WTuf72ULfPsyAozACILqQUvBRyefsBSTU6A0l2tGT5TyHCNYXSQWG2ZW-GNZZ0RvYcd49knZDoLmKfEZrFJPradkc7Wi"/>
+<div>
+<h2 class="text-xl font-bold text-text">Jane Doe</h2>
+<p class="text-sm text-gray-500">Loyalty Member</p>
+</div>
+</div>
+<nav class="space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg bg-primary text-white font-semibold transition-colors" href="#">
+<span class="material-symbols-outlined">person</span>
+<span>My Profile</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-alt-bg text-gray-600 hover:text-text font-semibold transition-colors" href="#">
+<span class="material-symbols-outlined">receipt_long</span>
+<span>Order History</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-alt-bg text-gray-600 hover:text-text font-semibold transition-colors" href="#">
+<span class="material-symbols-outlined">local_shipping</span>
+<span>Track Order</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-alt-bg text-gray-600 hover:text-text font-semibold transition-colors" href="#">
+<span class="material-symbols-outlined">credit_card</span>
+<span>Payment Methods</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-alt-bg text-gray-600 hover:text-text font-semibold transition-colors" href="#">
+<span class="material-symbols-outlined">home</span>
+<span>Addresses</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 mt-4 border-t pt-4 rounded-lg hover:bg-red-50 text-red-600 font-semibold transition-colors" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span>Logout</span>
+</a>
+</nav>
+</div>
+</aside>
+<div class="lg:col-span-3 space-y-8">
+<div class="bg-bg p-6 sm:p-8 rounded-xl shadow-sm">
+<h3 class="text-2xl font-bold text-text mb-6">My Profile</h3>
+<form class="space-y-6">
+<div class="grid sm:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="font-semibold text-sm text-gray-700" for="firstName">First Name</label>
+<input class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary" id="firstName" type="text" value="Jane"/>
+</div>
+<div class="space-y-2">
+<label class="font-semibold text-sm text-gray-700" for="lastName">Last Name</label>
+<input class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary" id="lastName" type="text" value="Doe"/>
+</div>
+</div>
+<div class="space-y-2">
+<label class="font-semibold text-sm text-gray-700" for="email">Email Address</label>
+<input class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary" id="email" type="email" value="jane.doe@example.com"/>
+</div>
+<div class="space-y-2">
+<label class="font-semibold text-sm text-gray-700" for="phone">Phone Number</label>
+<input class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary" id="phone" type="tel" value="123-456-7890"/>
+</div>
+<div class="flex justify-end pt-4">
+<button class="bg-action hover:bg-orange-600 text-white font-bold py-3 px-8 rounded-lg transition-transform transform active:scale-95" type="submit">Save Changes</button>
+</div>
+</form>
+</div>
+<div class="bg-bg p-6 sm:p-8 rounded-xl shadow-sm">
+<div class="flex justify-between items-center mb-6">
+<h3 class="text-2xl font-bold text-text">Current Order</h3>
+<a class="text-action font-semibold flex items-center gap-1" href="#">Track <span class="material-symbols-outlined">arrow_forward</span></a>
+</div>
+<div class="border border-gray-200 rounded-lg p-4 sm:p-6 space-y-4">
+<div class="flex justify-between items-start">
+<div>
+<p class="font-bold text-text">Order #PIZZA123</p>
+<p class="text-sm text-gray-500">Estimated delivery: 7:45 PM</p>
+</div>
+<span class="bg-green-100 text-green-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">Out for Delivery</span>
+</div>
+<div class="relative pt-4">
+<div class="overflow-hidden h-2 mb-4 text-xs flex rounded bg-primary/20">
+<div class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-gradient-to-r from-primary to-blue-400" style="width:75%"></div>
+</div>
+</div>
+<div>
+<p class="font-semibold">Your driver, Mike, is on the way!</p>
+</div>
+</div>
+</div>
+<div class="bg-bg p-6 sm:p-8 rounded-xl shadow-sm">
+<h3 class="text-2xl font-bold text-text mb-6">Recent Orders</h3>
+<div class="space-y-4">
+<div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+<div class="flex items-center gap-4">
+<div class="bg-alt-bg p-3 rounded-lg">
+<span class="material-symbols-outlined text-primary text-3xl">local_pizza</span>
+</div>
+<div>
+<p class="font-bold text-text">Margherita &amp; Pepperoni</p>
+<p class="text-sm text-gray-500">September 15, 2023</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-bold text-text">$25.98</p>
+<a class="text-sm text-action font-semibold" href="#">Reorder</a>
+</div>
+</div>
+<div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+<div class="flex items-center gap-4">
+<div class="bg-alt-bg p-3 rounded-lg">
+<span class="material-symbols-outlined text-primary text-3xl">lunch_dining</span>
+</div>
+<div>
+<p class="font-bold text-text">Veggie Supreme &amp; Garlic Knots</p>
+<p class="text-sm text-gray-500">August 28, 2023</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-bold text-text">$31.45</p>
+<a class="text-sm text-action font-semibold" href="#">Reorder</a>
+</div>
+</div>
+<div class="text-center pt-2">
+<a class="font-semibold text-primary hover:underline" href="#">View All Orders</a>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+
+</body></html>

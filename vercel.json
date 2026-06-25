@@ -1,0 +1,29 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    {
+      "source": "/loja/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/farmacia/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/mercado/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/petshop/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/servico/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

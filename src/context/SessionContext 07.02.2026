@@ -1,0 +1,267 @@
+import React, { createContext, useState, useContext, useEffect, useMemo, useCallback, ReactNode } from 'react';
+import { Session, User } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+// import { useRestaurant } from './RestaurantContext'; // Removido para quebrar a dependência circular
+
+interface Profile {
+  id: string;
+  first_name: string;
+  last_name: string;
+  avatar_url?: string;
+  role: 'admin' | 'customer' | 'super_admin';
+  phone?: string;
+  email?: string;
+  restaurant_id?: string;
+  is_paid: boolean; // NOVO: Adicionado status de pagamento
+}
+
+interface SessionContextType {
+  session: Session | null;
+  user: User | null;
+  profile: Profile | null;
+  isLoading: boolean;
+  isAdmin: boolean;
+  isCustomer: boolean;
+  isSuperAdmin: boolean;
+  isAdminPaid: boolean; // NOVO: Adicionado status de pagamento do admin
+  setMockSession: (session: Session | null, profile: Profile | null) => void;
+  softRevalidateSession: () => Promise<void>;
+}
+
+const SessionContext = createContext<SessionContextType | undefined>(undefined);
+
+export const SessionProvider = ({ children }: { ReactNode }) => {
+  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const mounted = React.useRef(false);
+  React.useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
+
+  const refreshWithTimeout = async (ms = 3000) => {
+    return Promise.race([
+      supabase.auth.refreshSession(),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('refresh-timeout')))),
+    ]);
+  };
+
+  // ATUALIZADO: settleSessionState agora aceita uma função para finalizar o loading
+  const settleSessionState = useCallback(async (currentSession: Session | null, finishLoading: () => void) => {
+    if (!mounted.current) return;
+
+    // Otimização: Só atualiza o estado 'session' se houver uma mudança real
+    if (session?.access_token !== currentSession?.access_token || session?.user?.id !== currentSession?.user?.id) {
+      setSession(currentSession);
+      console.log("[SessionContext] setSession called due to change.");
+    } else {
+      console.log("[SessionContext] setSession ignored (no change).");
+    }
+
+    // Otimização: Só atualiza o estado 'user' se houver uma mudança real
+    if (user?.id !== currentSession?.user?.id) {
+      setUser(currentSession?.user || null);
+      console.log("[SessionContext] setUser called due to change.");
+    } else {
+      console.log("[SessionContext] setUser ignored (no change).");
+    }
+
+    let fetchedProfile: Profile | null = null;
+    try {
+      if (currentSession?.user) {
+        console.log("SessionContext: Attempting to fetch profile for user ID:", currentSession.user.id);
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', currentSession.user.id)
+          .single();
+
+        if (error) {
+          if (error.code === 'PGRST116') { // No rows found
+            console.warn("SessionContext: Profile not found for user ID:", currentSession.user.id, ". Attempting client-side creation/upsert.");
+            
+            const newProfileRestaurantId: string | null = currentSession.user.user_metadata.restaurant_id || null;
+
+            const profileToUpsert = {
+              id: currentSession.user.id,
+              first_name: currentSession.user.user_metadata.first_name || '',
+              last_name: currentSession.user.user_metadata.last_name || '',
+              email: currentSession.user.email || '',
+              role: 'customer', // Default role for new signups
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              restaurant_id: newProfileRestaurantId,
+              is_paid: false,
+            };
+            console.log("SessionContext: Profile data to upsert:", profileToUpsert);
+            const currentUserFromClient = await supabase.auth.getUser();
+            console.log("SessionContext: Current user from client before upsert:", currentUserFromClient.data.user?.id);
+
+            // Use upsert instead of insert
+            const { data: newProfileData, error: upsertError } = await supabase
+              .from('profiles')
+              .upsert(profileToUpsert, { onConflict: 'id' }) // Use upsert with onConflict
+              .select('*')
+              .single();
+
+            if (upsertError) {
+              console.error("SessionContext: Error during profile upsert:", upsertError);
+              toast.error(`Error creating/updating your profile: ${upsertError.message}. Please try again.`);
+            } else {
+              fetchedProfile = newProfileData as Profile;
+              toast.success("Profile created/updated successfully!");
+              console.log("SessionContext: Profile upserted successfully:", fetchedProfile);
+            }
+          } else {
+            console.error("SessionContext: Error fetching profile from Supabase (code:", error.code, "):", error);
+            toast.error(`Error fetching your profile: ${error.message}. Please try again.`);
+          }
+        } else {
+          fetchedProfile = data as Profile;
+          console.log("SessionContext: Profile found successfully:", fetchedProfile);
+        }
+      } else {
+        console.log("SessionContext: No active user in session, skipping profile fetch.");
+      }
+    } catch (profileFetchError) {
+      console.error("SessionContext: Unexpected error during profile fetch/upsert in settleSessionState:", profileFetchError);
+      toast.error("Unexpected error loading/creating your profile.");
+    } finally {
+      if (mounted.current) {
+        // Otimização: Só atualiza o estado 'profile' se houver uma mudança real
+        if (profile?.id !== fetchedProfile?.id || profile?.role !== fetchedProfile?.role || profile?.is_paid !== fetchedProfile?.is_paid || profile?.restaurant_id !== fetchedProfile?.restaurant_id) {
+          setProfile(fetchedProfile);
+          console.log("[SessionContext] setProfile called due to change.");
+        } else {
+          console.log("[SessionContext] setProfile ignored (no change).");
+        }
+        // NOVO LOG AQUI
+        console.log(`[SessionContext] Perfil definido. Role: ${fetchedProfile?.role}, Restaurant ID: ${fetchedProfile?.restaurant_id}, Is Paid: ${fetchedProfile?.is_paid}`);
+        finishLoading(); // Calls the callback to finish loading
+        console.log("SessionContext: State settled. Session:", currentSession?.user?.id ? 'Active' : 'None', "Profile Role:", fetchedProfile?.role, "Restaurant ID:", fetchedProfile?.restaurant_id);
+      }
+    }
+  }, [session, user, profile]); // Added session, user, profile as dependencies for comparisons
+
+  const softRevalidateSession = useCallback(async () => {
+    if (!mounted.current) return;
+    console.log("SessionContext: softRevalidateSession acionado.");
+    setIsLoading(true);
+    try {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      await settleSessionState(currentSession, () => setIsLoading(false));
+    } catch (error) {
+      console.error("SessionContext: Erro em softRevalidateSession:", error);
+      await settleSessionState(null, () => setIsLoading(false));
+    }
+  }, [settleSessionState]);
+
+  // ATUALIZADO: revalidateSession agora gerencia o setIsLoading(true/false) condicionalmente
+  const revalidateSession = useCallback(async (event: string = 'MANUAL_REVALIDATE', showLoading: boolean = true) => {
+    if (!mounted.current) return;
+    
+    const finishLoading = () => {
+        if (showLoading) setIsLoading(false);
+    };
+
+    if (showLoading) {
+      setIsLoading(true);
+    }
+    console.log(`SessionContext: revalidateSession acionado por ${event}. showLoading: ${showLoading}.`);
+    
+    try {
+      const { data: { session: current } } = await supabase.auth.getSession();
+      let activeSession = current;
+
+      try {
+        const { data: { session: refreshed } } = await refreshWithTimeout();
+        if (refreshed) activeSession = refreshed;
+      } catch (e: any) {
+        console.warn(`SessionContext: refreshSession falhou ou excedeu o tempo limite (${e.message}). Prosseguindo com a sessão atual.`);
+      }
+      await settleSessionState(activeSession, finishLoading);
+    } catch (error) {
+      console.error("SessionContext: Erro inesperado durante revalidateSession:", error);
+      await settleSessionState(null, finishLoading);
+    }
+  }, [settleSessionState]);
+
+  useEffect(() => {
+    let authSubscription: any;
+
+    // Define a função de finalização de loading para onAuthStateChange
+    const finishLoadingOnAuthChange = () => setIsLoading(false);
+
+    revalidateSession('INITIAL_LOAD');
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      if (!mounted.current) return;
+      setIsLoading(true);
+      settleSessionState(newSession, finishLoadingOnAuthChange);
+    });
+    authSubscription = subscription;
+
+    // Eventos de foco e visibilidade chamam revalidateSession com showLoading=false
+    const onFocus = () => revalidateSession('WINDOW_FOCUS', false);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        revalidateSession('VISIBILITY_CHANGE', false);
+      }
+    };
+
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      console.log("SessionContext: Limpando listeners.");
+      if (authSubscription) {
+        authSubscription.unsubscribe();
+      }
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [settleSessionState, revalidateSession]);
+
+  const isAdmin = useMemo(() => profile?.role === 'admin', [profile]);
+  const isCustomer = useMemo(() => profile?.role === 'customer', [profile]);
+  const isSuperAdmin = useMemo(() => profile?.role === 'super_admin', [profile]);
+  const isAdminPaid = useMemo(() => isAdmin && profile?.is_paid === true, [isAdmin, profile]);
+
+  const setMockSession = useCallback((newSession: Session | null, newProfile: Profile | null) => {
+    console.log("SessionContext: Definindo sessão mockada.");
+    setSession(newSession);
+    setUser(newSession?.user || null);
+    setProfile(newProfile);
+    setIsLoading(false);
+  }, []);
+
+  const contextValue = useMemo(
+    () => ({
+      session,
+      user,
+      profile,
+      isLoading,
+      isAdmin,
+      isCustomer,
+      isSuperAdmin,
+      isAdminPaid,
+      setMockSession,
+      softRevalidateSession,
+    }),
+    [session, user, profile, isLoading, isAdmin, isCustomer, isSuperAdmin, isAdminPaid, setMockSession, softRevalidateSession]
+  );
+
+  return <SessionContext.Provider value={contextValue}>{children}</SessionContext.Provider>;
+};
+
+export const useSession = () => {
+  const context = useContext(SessionContext);
+  if (context === undefined) {
+    throw new Error('useSession must be used within a SessionProvider');
+  }
+  return context;
+};

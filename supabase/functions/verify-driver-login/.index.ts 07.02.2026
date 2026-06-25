@@ -1,0 +1,70 @@
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+serve(async (req) => {
+  // Handle CORS OPTIONS request
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { restaurantId, driverName } = await req.json();
+
+    if (!restaurantId || !driverName) {
+      return new Response(JSON.stringify({ error: 'Missing restaurantId or driverName' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      });
+    }
+
+    // Create a Supabase client with the service role key
+    // This bypasses RLS, allowing the function to read the 'employees' table
+    const supabaseServiceRole = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    const { data: employees, error } = await supabaseServiceRole
+      .from('employees')
+      .select('name, role, status')
+      .eq('restaurant_id', restaurantId)
+      .eq('role', 'Entregador')
+      .eq('status', 'Ativo')
+      .ilike('name', `%${driverName}%`); // Use ilike for case-insensitive partial match
+
+    if (error) {
+      console.error('Supabase query error:', error);
+      return new Response(JSON.stringify({ error: 'Database query failed' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500,
+      });
+    }
+
+    const foundDriver = employees.find(
+      (emp) => emp.name.toLowerCase().includes(driverName.toLowerCase())
+    );
+
+    if (foundDriver) {
+      return new Response(JSON.stringify({ success: true, driverName: foundDriver.name }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      });
+    } else {
+      return new Response(JSON.stringify({ success: false, message: 'Driver not found or inactive' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401,
+      });
+    }
+  } catch (error) {
+    console.error('Edge Function error:', error);
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 500,
+    });
+  }
+});
